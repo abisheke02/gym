@@ -1,0 +1,99 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --gym-primary: #005c5b;
+    --gym-accent: #017a79;
+    --bg-main: #f9fafb;
+    --bg-card: #ffffff;
+    --text-main: #111827;
+    --text-muted: #6b7280;
+    --border-color: #f3f4f6;
+  }
+
+  .dark {
+    --bg-main: #0a0a0a;
+    --bg-card: #121212;
+    --text-main: #f9fafb;
+    --text-muted: #9ca3af;
+    --border-color: #1f2937;
+  }
+
+  body {
+    @apply transition-colors duration-300;
+    background-color: var(--bg-main);
+    color: var(--text-main);
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+}
+
+/* Custom scrollbar matching GymBook */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Transitions and Animations */
+.animate-fadeIn {
+  animation: fadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Polished Card Styles */
+.gym-card {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  @apply rounded-2xl shadow-sm transition-all duration-300;
+}
+
+.gym-card:hover {
+  @apply shadow-lg border-opacity-50;
+}
+
+/* Polished Inputs matching Screenshot 5 & 2 */
+.input-field {
+  @apply w-full px-4 py-3 rounded-xl transition-all duration-200 font-medium text-sm outline-none;
+  background-color: var(--bg-main);
+  border: 2px solid var(--border-color);
+  color: var(--text-main);
+}
+
+.input-field:focus {
+  @apply ring-4 ring-[#005c5b]/10;
+  border-color: var(--gym-primary);
+}
+
+/* Polished Buttons */
+.btn-primary {
+  @apply px-6 py-3 bg-[#005c5b] text-white rounded-xl font-black text-sm transition-all duration-200 shadow-lg shadow-[#005c5b]/20;
+  @apply hover:bg-[#004746] hover:scale-[1.02] active:scale-95;
+}
+
+.btn-secondary {
+  @apply px-6 py-3 bg-white text-[#005c5b] border-2 border-[#005c5b]/10 rounded-xl font-black text-sm transition-all duration-200;
+  @apply hover:bg-gray-50 active:scale-95;
+}
+
+/* Status badge Polish */
+.status-badge {
+  @apply px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border;
+}

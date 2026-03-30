@@ -1,0 +1,16 @@
+ Volume in drive D is New Volume
+ Volume Serial Number is ECA5-4B97
+
+ Directory of D:\Projects\gym\backend
+
+03/10/2026  02:01 PM    <DIR>          .
+03/10/2026  01:51 PM    <DIR>          ..
+03/10/2026  12:44 AM               886 .env.example
+03/10/2026  02:01 PM                 0 dir_a_output.txt
+03/10/2026  07:17 AM               221 Dockerfile
+03/10/2026  07:19 AM    <DIR>          node_modules
+03/10/2026  07:20 AM           277,472 package-lock.json
+03/10/2026  12:44 AM               929 package.json
+03/10/2026  12:55 AM    <DIR>          src
+               5 File(s)        279,508 bytes
+               4 Dir(s)  97,742,680,064 bytes free
