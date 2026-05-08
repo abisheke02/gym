@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { financeAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+
 import { 
   Users, 
   UserPlus, 
@@ -23,6 +24,7 @@ import {
 const ReceptionDashboard = () => {
   const { user } = useAuth();
   const [summary, setSummary] = useState(null);
+  const [weeklyLeads, setWeeklyLeads] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -31,8 +33,12 @@ const ReceptionDashboard = () => {
 
   const fetchDashboardData = async () => {
     try {
-      const response = await financeAPI.getReceptionistSummary(user?.branch_id);
-      setSummary(response.data);
+      const [summaryRes, weeklyRes] = await Promise.all([
+        financeAPI.getReceptionistSummary(user?.branch_id),
+        financeAPI.getWeeklyLeads(user?.branch_id),
+      ]);
+      setSummary(summaryRes.data);
+      setWeeklyLeads(weeklyRes.data.weekly || []);
     } catch (error) {
       console.error('Failed to fetch receptionist dashboard data:', error);
     } finally {
@@ -75,15 +81,6 @@ const ReceptionDashboard = () => {
     }
   ];
 
-  const sampleLeadData = [
-    { name: 'Mon', leads: 24 },
-    { name: 'Tue', leads: 18 },
-    { name: 'Wed', leads: 30 },
-    { name: 'Thu', leads: 25 },
-    { name: 'Fri', leads: 35 },
-    { name: 'Sat', leads: 28 },
-    { name: 'Sun', leads: 15 }
-  ];
 
   return (
     <div className="space-y-6 animate-fadeIn">
@@ -165,7 +162,7 @@ const ReceptionDashboard = () => {
       <div className="gym-card">
         <h3 className="text-lg font-semibold text-white mb-4">Weekly Lead Flow</h3>
         <ResponsiveContainer width="100%" height={300}>
-          <LineChart data={sampleLeadData}>
+          <LineChart data={weeklyLeads}>
             <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
             <XAxis dataKey="name" stroke="#9CA3AF" />
             <YAxis stroke="#9CA3AF" />

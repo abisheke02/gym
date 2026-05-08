@@ -60,9 +60,9 @@ const SignUp = () => {
             </div>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4" autoComplete="off">
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
+              <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5">
                 Full Name
               </label>
               <input
@@ -72,12 +72,13 @@ const SignUp = () => {
                 onChange={handleChange}
                 className="input-field"
                 placeholder="John Doe"
+                autoComplete="name"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
+              <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5">
                 Email Address
               </label>
               <input
@@ -87,13 +88,14 @@ const SignUp = () => {
                 onChange={handleChange}
                 className="input-field"
                 placeholder="you@example.com"
+                autoComplete="new-email"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Phone Number (10 digits)
+              <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5">
+                Phone Number
               </label>
               <input
                 type="tel"
@@ -101,14 +103,15 @@ const SignUp = () => {
                 value={formData.phone}
                 onChange={handleChange}
                 className="input-field"
-                placeholder="1234567890"
+                placeholder="10-digit mobile number"
                 pattern="[0-9]{10}"
+                autoComplete="tel"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
+              <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5">
                 Password
               </label>
               <div className="relative">
@@ -117,8 +120,9 @@ const SignUp = () => {
                   name="password"
                   value={formData.password}
                   onChange={handleChange}
-                  className="input-field pr-12"
-                  placeholder="••••••••"
+                  className="input-field pr-10"
+                  placeholder="Min 6 characters"
+                  autoComplete="new-password"
                   required
                   minLength="6"
                 />
@@ -127,7 +131,7 @@ const SignUp = () => {
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
                 >
-                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
             </div>

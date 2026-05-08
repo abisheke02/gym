@@ -1,37 +1,28 @@
 import { useState, useEffect } from 'react';
-import { Link, useSearchParams, useNavigate } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { membersAPI, branchesAPI, plansAPI, trainersAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { 
-  Search, 
-  Plus, 
-  Filter, 
+import {
+  Search,
+  Plus,
+  Filter,
   Edit2,
   Users,
   Calendar,
-  Clock,
   AlertTriangle,
   ChevronRight,
   CheckCircle,
-  MessageSquare,
   X,
   Zap,
-  Cake,
-  Bell,
   Trash2,
-  HelpCircle,
-  Send,
-  ShoppingCart,
   Phone,
-  ArrowRight,
   DollarSign
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const Members = () => {
   const { user } = useAuth();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [members, setMembers] = useState([]);
   const [branches, setBranches] = useState([]);
   const [plans, setPlans] = useState([]);
@@ -40,10 +31,10 @@ const Members = () => {
   const [showModal, setShowModal] = useState(false);
   const [editingMember, setEditingMember] = useState(null);
   const [search, setSearch] = useState('');
-  
+
   // Enforce branch filter for non-owner roles
-  const effectiveBranchId = user?.role === 'owner' 
-    ? (searchParams.get('branch_id') || '') 
+  const effectiveBranchId = user?.role === 'owner'
+    ? (searchParams.get('branch_id') || '')
     : (user?.branch_id || '');
 
   const [filter, setFilter] = useState({
@@ -54,8 +45,6 @@ const Members = () => {
     expiry: '',
     sort: 'newest'
   });
-  const [showCreditsModal, setShowCreditsModal] = useState(false);
-  const [showOnboarding, setShowOnboarding] = useState(true);
 
   useEffect(() => {
     fetchMembers();
@@ -133,6 +122,17 @@ const Members = () => {
     }
   };
 
+  const handleDeleteMember = async (member) => {
+    if (!window.confirm(`Delete "${member.name}"? This cannot be undone.`)) return;
+    try {
+      await membersAPI.delete(member.id);
+      toast.success(`${member.name} deleted`);
+      fetchMembers();
+    } catch (error) {
+      toast.error(error.response?.data?.error || 'Failed to delete member');
+    }
+  };
+
   const handleEditSubmit = async (e) => {
     e.preventDefault();
     const formData = new FormData(e.target);
@@ -174,6 +174,7 @@ const Members = () => {
     }
 
     if (filter.expiry) {
+      if (!member.plan_end_date) return false;
       const daysLeft = Math.ceil((new Date(member.plan_end_date) - new Date()) / (1000 * 60 * 60 * 24));
       if (filter.expiry === 'today' && daysLeft !== 0) return false;
       if (filter.expiry === 'week' && (daysLeft < 0 || daysLeft > 7)) return false;
@@ -292,72 +293,83 @@ const Members = () => {
         ) : (
           <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-xl border border-gray-100 dark:border-gray-700 overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm whitespace-nowrap">
-                <thead className="bg-gray-50/50 dark:bg-gray-900/50 text-gray-400 dark:text-gray-500 text-[10px] font-black uppercase tracking-widest border-b border-gray-100 dark:border-gray-700">
+              <table className="w-full text-left text-xs whitespace-nowrap">
+                <thead className="bg-gray-50/50 dark:bg-gray-900/50 text-gray-400 dark:text-gray-500 text-[9px] font-black uppercase tracking-widest border-b border-gray-100 dark:border-gray-700">
                   <tr>
-                    <th className="px-6 py-4">Member Name</th>
-                    <th className="px-6 py-4">Admission ID</th>
-                    <th className="px-6 py-4">Contact</th>
-                    <th className="px-6 py-4">Plan & Amount</th>
-                    <th className="px-6 py-4">Validity</th>
-                    <th className="px-6 py-4">Status</th>
-                    <th className="px-6 py-4 text-center">Action</th>
+                    <th className="px-4 py-2.5">Member Name</th>
+                    <th className="px-4 py-2.5">Admission ID</th>
+                    <th className="px-4 py-2.5">Contact</th>
+                    <th className="px-4 py-2.5">Plan & Amount</th>
+                    <th className="px-4 py-2.5">Validity</th>
+                    <th className="px-4 py-2.5">Status</th>
+                    <th className="px-4 py-2.5 text-center">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
                   {filteredMembers.map(member => (
                     <tr key={member.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors group">
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-4">
-                          <div className="w-10 h-10 rounded-xl bg-[#005c5b]/10 dark:bg-[#005c5b]/20 flex items-center justify-center text-[#005c5b] dark:text-[#01a2a1] font-black text-lg">
+                      <td className="px-4 py-2.5">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-7 h-7 rounded-lg bg-[#005c5b]/10 dark:bg-[#005c5b]/20 flex items-center justify-center text-[#005c5b] dark:text-[#01a2a1] font-black text-sm">
                             {member.name.charAt(0)}
                           </div>
                           <div>
-                            <p className="font-black text-gray-900 dark:text-white uppercase tracking-tight">{member.name}</p>
+                            <p className="font-black text-gray-900 dark:text-white uppercase tracking-tight text-xs">{member.name}</p>
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-4 py-2.5">
                         <span className="font-bold text-[#005c5b] dark:text-[#01a2a1] uppercase tracking-wider">{member.membership_id || '-'}</span>
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-4 py-2.5">
                         <div className="text-gray-600 dark:text-gray-400">
-                          <div className="flex items-center gap-2 mb-1">
-                            <Phone className="w-3 h-3" />
-                            <span className="font-bold text-xs">{member.phone}</span>
+                          <div className="flex items-center gap-1.5 mb-0.5">
+                            <Phone className="w-2.5 h-2.5" />
+                            <span className="font-bold text-[11px]">{member.phone}</span>
                           </div>
-                          <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">{member.branch_name || 'No Branch'}</span>
+                          <span className="text-[9px] font-black uppercase tracking-widest text-gray-400">{member.branch_name || 'No Branch'}</span>
                         </div>
                       </td>
-                      <td className="px-6 py-4">
-                        <p className="font-bold text-gray-900 dark:text-white">{member.plan_name || 'N/A'}</p>
-                        <p className="text-xs font-black text-[#005c5b] dark:text-[#01a2a1]">₹{member.plan_price || 0}</p>
+                      <td className="px-4 py-2.5">
+                        <p className="font-bold text-gray-900 dark:text-white text-xs">{member.plan_name || 'N/A'}</p>
+                        <p className="text-[11px] font-black text-[#005c5b] dark:text-[#01a2a1]">₹{member.plan_price || 0}</p>
                       </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
-                          <Calendar className="w-4 h-4" />
-                          <span className="text-xs font-bold">{new Date(member.plan_end_date).toLocaleDateString('en-IN')}</span>
+                      <td className="px-4 py-2.5">
+                        <div className="flex items-center gap-1.5 text-gray-500 dark:text-gray-400">
+                          <Calendar className="w-3 h-3" />
+                          <span className="text-[11px] font-bold">{new Date(member.plan_end_date).toLocaleDateString('en-IN')}</span>
                         </div>
                       </td>
-                      <td className="px-6 py-4">
-                        <span className={`inline-flex items-center justify-center px-3 py-1 rounded-lg text-xs font-black uppercase tracking-widest border border-current ${statusColors[member.status || 'active']}`}>
+                      <td className="px-4 py-2.5">
+                        <span className={`inline-flex items-center justify-center px-2.5 py-0.5 rounded-md text-[10px] font-black uppercase tracking-widest border border-current ${statusColors[member.status || 'active']}`}>
                           {member.status || 'Active'}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-center">
-                        <div className="flex items-center justify-center gap-2">
-                          <button 
+                      <td className="px-4 py-2.5 text-center">
+                        <div className="flex items-center justify-center gap-1.5">
+                          <button
                             onClick={() => setEditingMember(member)}
-                            className="p-2 inline-flex bg-gray-100 hover:bg-amber-500 dark:bg-gray-700 dark:hover:bg-amber-500 text-gray-500 hover:text-white dark:text-gray-300 rounded-xl transition-all"
+                            className="p-1.5 inline-flex bg-gray-100 hover:bg-amber-500 dark:bg-gray-700 dark:hover:bg-amber-500 text-gray-500 hover:text-white dark:text-gray-300 rounded-lg transition-all"
+                            title="Edit"
                           >
-                            <Edit2 className="w-5 h-5" />
+                            <Edit2 className="w-3.5 h-3.5" />
                           </button>
-                          <Link 
+                          <Link
                             to={`/members/${member.id}`}
-                            className="p-2 inline-flex bg-gray-100 hover:bg-[#005c5b] dark:bg-gray-700 dark:hover:bg-[#01a2a1] text-gray-500 hover:text-white dark:text-gray-300 rounded-xl transition-all"
+                            className="p-1.5 inline-flex bg-gray-100 hover:bg-[#005c5b] dark:bg-gray-700 dark:hover:bg-[#01a2a1] text-gray-500 hover:text-white dark:text-gray-300 rounded-lg transition-all"
+                            title="View"
                           >
-                            <ChevronRight className="w-5 h-5" />
+                            <ChevronRight className="w-3.5 h-3.5" />
                           </Link>
+                          {['owner', 'manager'].includes(user?.role) && (
+                            <button
+                              onClick={() => handleDeleteMember(member)}
+                              className="p-1.5 inline-flex bg-gray-100 hover:bg-rose-500 dark:bg-gray-700 dark:hover:bg-rose-500 text-gray-500 hover:text-white dark:text-gray-300 rounded-lg transition-all"
+                              title="Delete"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>

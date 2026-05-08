@@ -2,39 +2,33 @@ const { Pool } = require('pg');
 const config = require('../config');
 
 const initDB = async () => {
-  // First connect without database to create it if needed
-  const adminPool = new Pool({
-    host: config.db.host,
-    port: config.db.port,
-    database: 'postgres',
-    user: config.db.user,
-    password: config.db.password,
-  });
+  const connStr = config.db.connectionString;
+  if (!connStr) {
+    console.error('❌ DATABASE_URL is not set. Skipping DB init.');
+    return;
+  }
+
+  // Admin pool — connect to base "postgres" db to ensure gym_db exists
+  const adminStr = connStr.replace(/\/[^/?]+(\?|$)/, '/postgres$1');
+  const adminPool = new Pool({ connectionString: adminStr, ssl: false });
 
   try {
-    // Create database if not exists
-    const dbCheck = await adminPool.query(
-      "SELECT 1 FROM pg_database WHERE datname = $1",
-      [config.db.database]
-    );
-    
-    if (dbCheck.rows.length === 0) {
-      await adminPool.query(`CREATE DATABASE ${config.db.database}`);
-      console.log(`✅ Database ${config.db.database} created`);
+    const dbName = connStr.match(/\/([^/?]+)(\?|$)/)?.[1];
+    if (dbName) {
+      const dbCheck = await adminPool.query(
+        'SELECT 1 FROM pg_database WHERE datname = $1',
+        [dbName]
+      );
+      if (dbCheck.rows.length === 0) {
+        await adminPool.query(`CREATE DATABASE "${dbName}"`);
+        console.log(`✅ Database ${dbName} created`);
+      }
     }
-    
     await adminPool.end();
-    
-    // Now connect to the gym database
-    const pool = new Pool({
-      host: config.db.host,
-      port: config.db.port,
-      database: config.db.database,
-      user: config.db.user,
-      password: config.db.password,
-    });
 
-    // Create tables
+    // Now connect to the gym database
+    const pool = new Pool({ connectionString: connStr, ssl: false });
+
     await pool.query(`
       -- Enable UUID extension
       CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
@@ -60,7 +54,7 @@ const initDB = async () => {
         created_at TIMESTAMP DEFAULT NOW()
       );
 
-      -- Users (Staff) - Create first without FK
+      -- Users (Staff)
       CREATE TABLE IF NOT EXISTS users (
         id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
         email VARCHAR(255) UNIQUE NOT NULL,
@@ -68,7 +62,7 @@ const initDB = async () => {
         full_name VARCHAR(100) NOT NULL,
         phone VARCHAR(20),
         role VARCHAR(20) NOT NULL CHECK (role IN ('owner', 'manager', 'sales', 'accountant', 'receptionist')),
-        branch_id UUID, -- FK added later
+        branch_id UUID,
         is_active BOOLEAN DEFAULT true,
         created_at TIMESTAMP DEFAULT NOW(),
         updated_at TIMESTAMP DEFAULT NOW()
@@ -86,9 +80,9 @@ const initDB = async () => {
         updated_at TIMESTAMP DEFAULT NOW()
       );
 
-      -- Add the FK back to users if it doesn't exist
-      DO $$ 
-      BEGIN 
+      -- FK: users -> branches
+      DO $$
+      BEGIN
         IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'fk_user_branch') THEN
           ALTER TABLE users ADD CONSTRAINT fk_user_branch FOREIGN KEY (branch_id) REFERENCES branches(id) ON DELETE SET NULL;
         END IF;
@@ -116,7 +110,7 @@ const initDB = async () => {
         updated_at TIMESTAMP DEFAULT NOW()
       );
 
-      -- Lead Timeline (Activity Log)
+      -- Lead Timeline
       CREATE TABLE IF NOT EXISTS lead_timeline (
         id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
         lead_id UUID REFERENCES leads(id) ON DELETE CASCADE,
@@ -124,6 +118,20 @@ const initDB = async () => {
         description TEXT,
         performed_by UUID REFERENCES users(id),
         created_at TIMESTAMP DEFAULT NOW()
+      );
+
+      -- Trainers
+      CREATE TABLE IF NOT EXISTS trainers (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        name VARCHAR(100) NOT NULL,
+        phone VARCHAR(20),
+        email VARCHAR(255),
+        specialization VARCHAR(100),
+        salary DECIMAL(10,2),
+        branch_id UUID REFERENCES branches(id),
+        is_active BOOLEAN DEFAULT true,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
       );
 
       -- Members
@@ -134,7 +142,9 @@ const initDB = async () => {
         email VARCHAR(255),
         gender VARCHAR(10),
         age INTEGER,
+        dob DATE,
         address TEXT,
+        membership_id VARCHAR(50),
         branch_id UUID REFERENCES branches(id),
         plan_id UUID REFERENCES plans(id),
         joining_date DATE NOT NULL,
@@ -143,8 +153,24 @@ const initDB = async () => {
         status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'expired', 'frozen', 'cancelled')),
         last_check_in TIMESTAMP,
         is_active BOOLEAN DEFAULT true,
+        pt_trainer_id UUID REFERENCES trainers(id) ON DELETE SET NULL,
+        pt_joining_date DATE,
+        pt_end_date DATE,
+        pt_sessions_total INTEGER DEFAULT 0,
+        pt_sessions_completed INTEGER DEFAULT 0,
         created_at TIMESTAMP DEFAULT NOW(),
         updated_at TIMESTAMP DEFAULT NOW()
+      );
+
+      -- Attendance (proper check-in/check-out log)
+      CREATE TABLE IF NOT EXISTS attendance (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        member_id UUID REFERENCES members(id) ON DELETE CASCADE,
+        branch_id UUID REFERENCES branches(id),
+        check_in TIMESTAMP NOT NULL DEFAULT NOW(),
+        check_out TIMESTAMP,
+        date DATE NOT NULL DEFAULT CURRENT_DATE,
+        created_at TIMESTAMP DEFAULT NOW()
       );
 
       -- WhatsApp Messages
@@ -164,7 +190,7 @@ const initDB = async () => {
         id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
         member_id UUID REFERENCES members(id),
         amount DECIMAL(10,2) NOT NULL,
-        payment_mode VARCHAR(20) CHECK (payment_mode IN ('cash', 'upi', 'card', 'online')),
+        payment_mode VARCHAR(20) CHECK (payment_mode IN ('cash', 'upi', 'card', 'online', 'razorpay')),
         transaction_id VARCHAR(100),
         discount_amount DECIMAL(10,2) DEFAULT 0,
         notes TEXT,
@@ -185,7 +211,7 @@ const initDB = async () => {
         created_at TIMESTAMP DEFAULT NOW()
       );
 
-      -- Renewals Tracking
+      -- Renewal Reminders
       CREATE TABLE IF NOT EXISTS renewal_reminders (
         id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
         member_id UUID REFERENCES members(id),
@@ -196,7 +222,72 @@ const initDB = async () => {
         created_at TIMESTAMP DEFAULT NOW()
       );
 
-      -- Create indexes for better query performance
+      -- Software Subscriptions (gym pays to use this SaaS platform)
+      CREATE TABLE IF NOT EXISTS software_subscriptions (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        plan_type VARCHAR(20) NOT NULL CHECK (plan_type IN ('monthly', 'half_yearly', 'yearly')),
+        amount DECIMAL(10,2) NOT NULL,
+        start_date DATE NOT NULL,
+        end_date DATE NOT NULL,
+        status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'expired', 'cancelled')),
+        payment_id VARCHAR(150),
+        order_id VARCHAR(150),
+        razorpay_signature VARCHAR(300),
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+
+      -- Gateway Transactions (Razorpay order log)
+      CREATE TABLE IF NOT EXISTS gateway_transactions (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        order_id VARCHAR(150) NOT NULL UNIQUE,
+        payment_id VARCHAR(150),
+        amount DECIMAL(10,2) NOT NULL,
+        currency VARCHAR(10) DEFAULT 'INR',
+        status VARCHAR(20) DEFAULT 'created' CHECK (status IN ('created', 'captured', 'failed', 'refunded')),
+        purpose VARCHAR(50) DEFAULT 'payment',
+        reference_id TEXT,
+        signature VARCHAR(300),
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+      );
+
+      -- Password Reset Tokens
+      CREATE TABLE IF NOT EXISTS password_reset_tokens (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+        token VARCHAR(64) NOT NULL UNIQUE,
+        expires_at TIMESTAMP NOT NULL,
+        used BOOLEAN DEFAULT false,
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+
+      -- Migrate existing members table (safe — IF NOT EXISTS skips if column already present)
+      DO $$
+      BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='members' AND column_name='dob') THEN
+          ALTER TABLE members ADD COLUMN dob DATE;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='members' AND column_name='membership_id') THEN
+          ALTER TABLE members ADD COLUMN membership_id VARCHAR(50);
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='members' AND column_name='pt_trainer_id') THEN
+          ALTER TABLE members ADD COLUMN pt_trainer_id UUID REFERENCES trainers(id) ON DELETE SET NULL;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='members' AND column_name='pt_joining_date') THEN
+          ALTER TABLE members ADD COLUMN pt_joining_date DATE;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='members' AND column_name='pt_end_date') THEN
+          ALTER TABLE members ADD COLUMN pt_end_date DATE;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='members' AND column_name='pt_sessions_total') THEN
+          ALTER TABLE members ADD COLUMN pt_sessions_total INTEGER DEFAULT 0;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='members' AND column_name='pt_sessions_completed') THEN
+          ALTER TABLE members ADD COLUMN pt_sessions_completed INTEGER DEFAULT 0;
+        END IF;
+      END $$;
+
+      -- Indexes
       CREATE INDEX IF NOT EXISTS idx_leads_status ON leads(status);
       CREATE INDEX IF NOT EXISTS idx_leads_branch ON leads(branch_id);
       CREATE INDEX IF NOT EXISTS idx_leads_assigned ON leads(assigned_to);
@@ -207,71 +298,63 @@ const initDB = async () => {
       CREATE INDEX IF NOT EXISTS idx_payments_created ON payments(created_at);
       CREATE INDEX IF NOT EXISTS idx_expenses_branch ON expenses(branch_id);
       CREATE INDEX IF NOT EXISTS idx_expenses_date ON expenses(expense_date);
+      CREATE INDEX IF NOT EXISTS idx_attendance_member ON attendance(member_id);
+      CREATE INDEX IF NOT EXISTS idx_attendance_date ON attendance(date);
+      CREATE INDEX IF NOT EXISTS idx_attendance_branch ON attendance(branch_id);
+      CREATE INDEX IF NOT EXISTS idx_gateway_order ON gateway_transactions(order_id);
     `);
 
     console.log('✅ All tables created successfully');
-    
-    // Insert default lead sources
+
+    // Default data
     await pool.query(`
       INSERT INTO lead_sources (name, type) VALUES
-        ('Meta Ads', 'meta_ads'),
-        ('Website Form', 'website'),
-        ('Manual Entry', 'manual'),
-        ('Referral', 'referral'),
-        ('Walk-in', 'walkin')
+        ('Meta Ads', 'meta_ads'),('Website Form', 'website'),
+        ('Manual Entry', 'manual'),('Referral', 'referral'),('Walk-in', 'walkin')
       ON CONFLICT (name) DO NOTHING
     `);
 
-    // Insert default plans
     await pool.query(`
       INSERT INTO plans (name, duration_months, price, description) VALUES
-        ('Monthly', 1, 999, 'One month access to all facilities'),
-        ('Quarterly', 3, 2499, 'Three months with savings'),
-        ('Half Yearly', 6, 4499, 'Six months best value'),
-        ('Annual', 12, 10000, 'Full year - Best savings!')
+        ('Monthly',    1,  999,   'One month access to all facilities'),
+        ('Quarterly',  3,  2499,  'Three months with savings'),
+        ('Half Yearly',6,  4499,  'Six months best value'),
+        ('Annual',     12, 10000, 'Full year - Best savings!')
       ON CONFLICT (name) DO NOTHING
     `);
 
-    // Insert default branches
     await pool.query(`
       INSERT INTO branches (name, address, phone) VALUES
-        ('Gerugambakkam', '123 Main Road, Gerugambakkam, Chennai', '9876543210'),
-        ('Kundrathur', '456 High Road, Kundrathur, Chennai', '9876543211'),
-        ('Pozhichalur', '789 Middle Street, Pozhichalur, Chennai', '9876543212'),
-        ('Porur', '123 RTO Road, Porur, Chennai', '9876543213'),
-        ('Ramapuram', '456 Mount Road, Ramapuram, Chennai', '9876543214'),
-        ('Iyyappanthangal', '789 Vinayagar Street, Iyyappanthangal, Chennai', '9876543215'),
-        ('Kolapakkam', '123 Garden Road, Kolapakkam, Chennai', '9876543216')
+        ('Gerugambakkam','123 Main Road, Gerugambakkam, Chennai','9876543210'),
+        ('Kundrathur','456 High Road, Kundrathur, Chennai','9876543211'),
+        ('Pozhichalur','789 Middle Street, Pozhichalur, Chennai','9876543212'),
+        ('Porur','123 RTO Road, Porur, Chennai','9876543213'),
+        ('Ramapuram','456 Mount Road, Ramapuram, Chennai','9876543214'),
+        ('Iyyappanthangal','789 Vinayagar Street, Iyyappanthangal, Chennai','9876543215'),
+        ('Kolapakkam','123 Garden Road, Kolapakkam, Chennai','9876543216')
       ON CONFLICT (name) DO NOTHING
     `);
 
-    console.log('✅ Default data inserted successfully');
-    
-    // Create default owner user (password: admin123)
     const bcrypt = require('bcryptjs');
     const passwordHash = await bcrypt.hash('admin123', 12);
-    
     await pool.query(`
       INSERT INTO users (email, password_hash, full_name, phone, role)
       VALUES ('owner@ironmanfitness.com', $1, 'Super Admin', '9876500000', 'owner')
       ON CONFLICT (email) DO NOTHING
     `, [passwordHash]);
 
-    console.log('✅ Default owner user created (email: owner@ironmanfitness.com, password: admin123)');
-    
+    console.log('✅ Default data inserted. owner@ironmanfitness.com / admin123');
     await pool.end();
     console.log('✅ IRONMAN FITNESS Database initialization complete!');
-    
+
   } catch (error) {
     console.error('❌ Database initialization error:', error);
     process.exit(1);
   }
 };
 
-// Run if called directly
 if (require.main === module) {
   initDB();
 }
 
 module.exports = { initDB };
-

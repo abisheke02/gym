@@ -1,9 +1,9 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
-import { 
-  Users, 
-  Building2, 
+import {
+  Users,
+  Building2,
   LogOut,
   Menu,
   X,
@@ -15,19 +15,14 @@ import {
   PieChart,
   FileText,
   GitBranch,
-  SmartphoneNfc,
-  Share2,
-  Trash,
-  RefreshCw,
   Lock,
-  Star,
   Info,
   Calendar,
-  Settings,
-  ChevronRight
+  ChevronRight,
+  BadgeCheck
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { branchesAPI } from '../services/api';
+import { branchesAPI, subscriptionAPI } from '../services/api';
 
 const Layout = () => {
   const { user, logout } = useAuth();
@@ -36,10 +31,18 @@ const Layout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [branches, setBranches] = useState([]);
   const [branchesExpanded, setBranchesExpanded] = useState(false);
+  const [subStatus, setSubStatus] = useState('loading');
 
   useEffect(() => {
     if (user?.role === 'owner' || user?.role === 'manager') {
       fetchBranches();
+    }
+    if (user?.role === 'owner') {
+      subscriptionAPI.getCurrent()
+        .then(res => setSubStatus(res.data.subscription?.status === 'active' ? 'active' : 'expired'))
+        .catch(() => setSubStatus('unknown'));
+    } else {
+      setSubStatus(null);
     }
   }, [user]);
 
@@ -62,48 +65,36 @@ const Layout = () => {
       title: 'Main Menu',
       items: [
         { path: '/dashboard', icon: PieChart, label: 'Dashboard' },
-        { path: '/members', icon: Users, label: 'Member Directory' },
+        { path: '/members', icon: Users, label: 'Members' },
+        { path: '/attendance', icon: Calendar, label: 'Attendance' },
+        { path: '/finance', icon: CreditCard, label: 'Finance', roles: ['owner', 'manager', 'accountant'] },
+        { path: '/reports', icon: FileText, label: 'Reports', roles: ['owner', 'manager'] },
       ]
     },
     {
-      title: 'Management Tools',
+      title: 'Management',
       items: [
-        { path: '/branches', icon: GitBranch, label: 'Manage Gym Branch', roles: ['owner', 'manager'] },
-        { path: '/trainers', icon: Users, label: 'Personal Trainers', roles: ['owner', 'manager'] },
-        { path: '/manage-enquiry', icon: Info, label: 'Manage Enquiry' },
+        { path: '/branches', icon: GitBranch, label: 'Branches', roles: ['owner', 'manager'] },
+        { path: '/trainers', icon: Users, label: 'Trainers', roles: ['owner', 'manager'] },
+        { path: '/manage-enquiry', icon: Info, label: 'Enquiry' },
         { path: '/manage-expense', icon: CreditCard, label: 'Expenses', roles: ['owner', 'manager', 'accountant'] },
-        { path: '/download-report', icon: Download, label: 'Member Report Download', roles: ['owner', 'manager'] },
+        { path: '/download-report', icon: Download, label: 'Download Report', roles: ['owner', 'manager'] },
         { path: '/deleted-members', icon: Trash2, label: 'Deleted Members', roles: ['owner', 'manager'] },
       ]
     },
     {
-      title: 'Other Products',
+      title: 'Platform',
       items: [
-        { path: '#', icon: SmartphoneNfc, label: 'GymBook Android App' },
-        { path: '#', icon: Share2, label: 'Refer And Earn' },
-      ]
-    },
-    {
-      title: 'GymBook Account',
-      items: [
-        { path: '/manage-devices', icon: Smartphone, label: 'Manage Devices', roles: ['owner', 'manager'] },
-        { path: '#', icon: Trash, label: 'Delete Account' },
-        { path: '#', icon: RefreshCw, label: 'Check for update' },
-        { path: '/forgot-password', icon: Lock, label: 'Forget Password' },
+        { path: '/subscriptions', icon: BadgeCheck, label: 'Subscription', roles: ['owner'] },
+        { path: '/manage-devices', icon: Smartphone, label: 'Devices', roles: ['owner', 'manager'] },
+        { path: '/forgot-password', icon: Lock, label: 'Change Password' },
         { path: '/help', icon: HelpCircle, label: 'Help & Support' },
       ]
     },
-    {
-      title: 'Support',
-      items: [
-        { path: '#', icon: Star, label: 'Rate on App Store' },
-        { path: '#', icon: Info, label: 'Version 8.6.2' },
-      ]
-    }
   ];
 
   return (
-    <div className="min-h-screen flex transition-colors duration-300">
+    <div className="h-screen flex transition-colors duration-300 overflow-hidden">
       {/* Mobile sidebar backdrop */}
       {sidebarOpen && (
         <div 
@@ -114,129 +105,134 @@ const Layout = () => {
 
       {/* Sidebar */}
       <aside className={`
-        fixed lg:static inset-y-0 left-0 z-[90] w-72 bg-white dark:bg-gray-900 border-r border-gray-100 dark:border-gray-800 
+        fixed lg:static inset-y-0 left-0 z-[90] w-52 bg-white dark:bg-gray-900 border-r border-gray-100 dark:border-gray-800
         transform transition-transform duration-300 ease-in-out overflow-y-auto shadow-2xl lg:shadow-none
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
       `}>
         {/* Sidebar Header */}
-        <div className="bg-[#005c5b] p-6 pt-8 space-y-4">
-          <div className="flex items-start justify-between">
-             <div className="flex items-center gap-4">
-                <div className="w-14 h-14 bg-white/20 rounded-xl flex items-center justify-center text-white text-2xl font-black border border-white/20">
-                   IF
-                </div>
-                <div className="text-white">
-                   <h2 className="text-lg font-black tracking-tight truncate max-w-[140px]">Ironman Fitness</h2>
-                   <p className="text-[10px] opacity-70 truncate max-w-[140px] font-black uppercase tracking-widest">{user?.role}</p>
-                </div>
-             </div>
-             <button onClick={() => setSidebarOpen(false)} className="lg:hidden text-white/50 hover:text-white transition-colors">
-                <X className="w-6 h-6" />
-             </button>
+        <div className="bg-[#005c5b] px-4 py-3 space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center text-white text-sm font-black border border-white/20">
+                IF
+              </div>
+              <div className="text-white min-w-0">
+                <h2 className="text-sm font-black tracking-tight truncate">Ironman Fitness</h2>
+                <p className="text-[9px] opacity-70 font-black uppercase tracking-widest">{user?.role}</p>
+              </div>
+            </div>
+            <button onClick={() => setSidebarOpen(false)} className="lg:hidden text-white/50 hover:text-white">
+              <X className="w-4 h-4" />
+            </button>
           </div>
-          
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-white/10 rounded-full border border-white/20">
-             <Calendar className="w-3.5 h-3.5 text-white" />
-             <span className="text-[9px] text-white font-black uppercase tracking-widest">Expires: 22 Mar 2026</span>
-          </div>
+          {subStatus && (
+            <div className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full border ${
+              subStatus === 'active'
+                ? 'bg-white/10 border-white/20'
+                : subStatus === 'expired'
+                ? 'bg-red-500/20 border-red-400/30'
+                : 'bg-white/5 border-white/10'
+            }`}>
+              <Calendar className="w-2.5 h-2.5 text-white" />
+              <span className="text-[8px] text-white font-black uppercase tracking-widest">
+                Sub: {subStatus === 'loading' ? '...' : subStatus}
+              </span>
+            </div>
+          )}
         </div>
 
-        <nav className="p-4 py-8 space-y-8">
+        <nav className="p-2 py-4 space-y-4">
           {menuSections.map((section, sidx) => (
-            <div key={sidx} className="space-y-4">
-              <h3 className="px-4 text-[11px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest leading-none">
+            <div key={sidx} className="space-y-0.5">
+              <h3 className="px-3 pb-1 text-[9px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">
                 {section.title}
               </h3>
-              <div className="space-y-1">
-                {section.items.filter(item => !item.roles || item.roles.includes(user?.role)).map((item, iidx) => {
-                  if (item.label === 'Manage Gym Branch') {
-                    return (
-                      <div key={iidx} className="space-y-1">
-                        <button
-                          onClick={() => setBranchesExpanded(!branchesExpanded)}
-                          className={`
-                            flex items-center justify-between w-full px-4 py-3.5 rounded-xl transition-all duration-200 group
-                            ${branchesExpanded ? 'bg-[#005c5b]/5 text-[#005c5b]' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'}
-                          `}
-                        >
-                          <div className="flex items-center gap-4">
-                             <item.icon className="w-5 h-5 transition-transform group-hover:scale-110" />
-                             <span className="text-[14px] font-bold tracking-tight">{item.label}</span>
-                          </div>
-                          <ChevronRight className={`w-4 h-4 transition-transform ${branchesExpanded ? 'rotate-90' : ''}`} />
-                        </button>
-                        
-                        {branchesExpanded && (
-                          <div className="pl-12 space-y-1 animate-slideDown">
-                            {branches.map(branch => (
-                              <NavLink
-                                key={branch.id}
-                                to={`/dashboard?branch_id=${branch.id}`}
-                                className="block py-2 text-[13px] font-medium text-gray-400 hover:text-[#005c5b] transition-colors truncate"
-                              >
-                                {branch.name}
-                              </NavLink>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  }
-
+              {section.items.filter(item => !item.roles || item.roles.includes(user?.role)).map((item, iidx) => {
+                if (item.label === 'Branches') {
                   return (
-                    <NavLink
-                      key={iidx}
-                      to={item.path}
-                      onClick={() => setSidebarOpen(false)}
-                      className={({ isActive }) => `
-                        flex items-center justify-between px-4 py-3.5 rounded-xl transition-all duration-200 group
-                        ${isActive 
-                          ? 'bg-[#005c5b]/10 text-[#005c5b] dark:bg-[#005c5b]/20 dark:text-[#01a2a1]' 
-                          : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white'
-                        }
-                      `}
-                    >
-                      <div className="flex items-center gap-4">
-                         <item.icon className="w-5 h-5 transition-transform group-hover:scale-110" />
-                         <span className="text-[14px] font-bold tracking-tight">{item.label}</span>
-                      </div>
-                      <ChevronRight className={`w-4 h-4 opacity-0 transition-opacity group-hover:opacity-100 ${item.path === '#' ? 'hidden' : ''}`} />
-                    </NavLink>
+                    <div key={iidx}>
+                      <button
+                        onClick={() => setBranchesExpanded(!branchesExpanded)}
+                        className={`flex items-center justify-between w-full px-3 py-2 rounded-lg transition-all group
+                          ${branchesExpanded ? 'bg-[#005c5b]/5 text-[#005c5b]' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <item.icon className="w-3.5 h-3.5" />
+                          <span className="text-[12px] font-bold">{item.label}</span>
+                        </div>
+                        <ChevronRight className={`w-3 h-3 transition-transform ${branchesExpanded ? 'rotate-90' : ''}`} />
+                      </button>
+                      {branchesExpanded && (
+                        <div className="pl-8 space-y-0.5 pt-0.5">
+                          {branches.map(branch => (
+                            <NavLink
+                              key={branch.id}
+                              to={`/dashboard?branch_id=${branch.id}`}
+                              className="block py-1.5 text-[11px] font-medium text-gray-400 hover:text-[#005c5b] transition-colors truncate"
+                            >
+                              {branch.name}
+                            </NavLink>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   );
-                })}
-              </div>
+                }
+                return (
+                  <NavLink
+                    key={iidx}
+                    to={item.path}
+                    onClick={() => setSidebarOpen(false)}
+                    className={({ isActive }) => `
+                      flex items-center justify-between px-3 py-2 rounded-lg transition-all group
+                      ${isActive
+                        ? 'bg-[#005c5b]/10 text-[#005c5b] dark:bg-[#005c5b]/20 dark:text-[#01a2a1]'
+                        : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white'}
+                    `}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <item.icon className="w-3.5 h-3.5 shrink-0" />
+                      <span className="text-[12px] font-bold truncate">{item.label}</span>
+                    </div>
+                    {item.path !== '#' && (
+                      <ChevronRight className="w-3 h-3 opacity-0 group-hover:opacity-60 shrink-0" />
+                    )}
+                  </NavLink>
+                );
+              })}
             </div>
           ))}
 
-          {/* Logout button */}
-          <div className="pt-6 border-t border-gray-50 dark:border-gray-800">
-             <button 
-                onClick={handleLogout}
-                className="flex items-center gap-4 px-4 py-3.5 w-full text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-all font-black text-[14px] group"
-             >
-                <LogOut className="w-5 h-5 transition-transform group-hover:-translate-x-1" />
-                <span>Logout Session</span>
-             </button>
+          {/* Logout */}
+          <div className="pt-3 border-t border-gray-100 dark:border-gray-800">
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-2.5 px-3 py-2 w-full text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-all font-black text-[12px] group"
+            >
+              <LogOut className="w-3.5 h-3.5 transition-transform group-hover:-translate-x-0.5" />
+              <span>Logout</span>
+            </button>
           </div>
         </nav>
       </aside>
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col min-h-screen bg-gray-50 dark:bg-[#0a0a0a]">
-        {/* Top bar (Optional for mobile only when sidebar is closed) */}
+      <div className="flex-1 flex flex-col h-full bg-gray-50 dark:bg-[#0a0a0a] overflow-hidden">
         {!sidebarOpen && (
-          <header className="lg:hidden bg-[#005c5b] text-white p-4 flex items-center justify-between sticky top-0 z-40 shadow-lg">
-            <button onClick={() => setSidebarOpen(true)} className="p-2 -ml-2 rounded-full hover:bg-white/10">
-              <Menu className="w-6 h-6" />
+          <header className="lg:hidden bg-[#005c5b] text-white px-4 py-3 flex items-center justify-between sticky top-0 z-40 shadow-lg">
+            <button onClick={() => setSidebarOpen(true)} className="p-1.5 rounded-lg hover:bg-white/10">
+              <Menu className="w-5 h-5" />
             </button>
-            <h1 className="text-lg font-black tracking-tight">IRONMAN FITNESS</h1>
-            <div className="w-10" />
+            <h1 className="text-sm font-black tracking-tight">IRONMAN FITNESS</h1>
+            <div className="w-8" />
           </header>
         )}
-        
+
         {/* Page content */}
-        <main className="flex-1 p-4 lg:p-8 overflow-auto">
-          <Outlet />
+        <main className="flex-1 p-3 lg:p-5 overflow-y-auto">
+          <div className="pb-20 lg:pb-5">
+            <Outlet />
+          </div>
         </main>
 
         {/* Bottom Tab Bar (Local Mobile) */}

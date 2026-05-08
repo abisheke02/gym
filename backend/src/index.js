@@ -14,6 +14,10 @@ const planRoutes = require('./routes/plans');
 const trainerRoutes = require('./routes/trainers');
 const financeRoutes = require('./routes/finance');
 const webhookRoutes = require('./routes/webhooks');
+const subscriptionRoutes = require('./routes/subscriptions');
+const gatewayRoutes = require('./routes/gateway');
+const attendanceRoutes = require('./routes/attendance');
+const messagingRoutes = require('./routes/messaging');
 
 const app = express();
 
@@ -65,6 +69,10 @@ app.use('/api/plans', planRoutes);
 app.use('/api/trainers', trainerRoutes);
 app.use('/api', financeRoutes);
 app.use('/api/webhooks', webhookRoutes);
+app.use('/api/subscriptions', subscriptionRoutes);
+app.use('/api/gateway', gatewayRoutes);
+app.use('/api/attendance', attendanceRoutes);
+app.use('/api/messaging', messagingRoutes);
 
 // 404 handler
 app.use((req, res) => {
@@ -80,7 +88,7 @@ app.use((err, req, res, next) => {
 // Start server
 const PORT = config.port;
 
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`
 ╔═══════════════════════════════════════════════════╗
 ║                                                   ║
@@ -92,7 +100,11 @@ app.listen(PORT, () => {
   `);
   
   // Initialize scheduler
-  scheduler.init();
+  try {
+    scheduler.init();
+  } catch (err) {
+    console.error('⚠️ Scheduler failed to initialize:', err.message);
+  }
 });
 
 // Graceful shutdown

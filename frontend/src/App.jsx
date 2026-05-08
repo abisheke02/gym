@@ -18,6 +18,7 @@ import AdminLogin from './pages/AdminLogin';
 import Help from './pages/Help';
 import DeletedMembers from './pages/DeletedMembers';
 import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 import ManageExpense from './pages/ManageExpense';
 import ManageEnquiry from './pages/ManageEnquiry';
 import DownloadReport from './pages/DownloadReport';
@@ -28,6 +29,7 @@ import Attendance from './pages/Attendance';
 import ManageDevices from './pages/ManageDevices';
 import Gym from './pages/Gym';
 import Trainers from './pages/Trainers';
+import Subscriptions from './pages/Subscriptions';
 
 
 const ProtectedRoute = ({ children, roles }) => {
@@ -70,6 +72,7 @@ function App() {
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<SignUp />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
       
       <Route path="/" element={
         <ProtectedRoute>
@@ -118,6 +121,11 @@ function App() {
         <Route path="manage-devices" element={<ManageDevices />} />
         <Route path="gym" element={<Gym />} />
         <Route path="trainers" element={<Trainers />} />
+        <Route path="subscriptions" element={
+          <ProtectedRoute roles={['owner']}>
+            <Subscriptions />
+          </ProtectedRoute>
+        } />
       </Route>
 
       <Route path="/admin-login" element={<AdminLogin />} />

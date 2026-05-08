@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { subscriptionAPI } from '../services/api';
 import { 
   Fingerprint, 
   QrCode, 
@@ -36,6 +37,13 @@ const Gym = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { isDarkMode, toggleTheme } = useTheme();
+  const [subscription, setSubscription] = useState(null);
+
+  useEffect(() => {
+    subscriptionAPI.getCurrent()
+      .then(res => setSubscription(res.data.subscription))
+      .catch(() => setSubscription(null));
+  }, []);
 
   const MenuItem = ({ icon: Icon, label, onClick, subtext, count, color = "bg-[#005c5b]" }) => (
     <button 
@@ -80,7 +88,7 @@ const Gym = () => {
                   <h2 className="text-xl font-black text-gray-900 dark:text-white leading-tight">Ironman Fitness</h2>
                   <p className="text-sm font-bold text-gray-800 dark:text-gray-300">{user?.full_name}</p>
                   <p className="text-xs font-medium text-gray-500 dark:text-gray-400">{user?.email}</p>
-                  <p className="text-xs font-medium text-gray-500 dark:text-gray-400">+91 {user?.phone || '7094607869'}</p>
+                  {user?.phone && <p className="text-xs font-medium text-gray-500 dark:text-gray-400">+91 {user.phone}</p>}
                </div>
                <button className="absolute top-4 right-4 p-2 bg-[#f0f9f9] dark:bg-[#005c5b]/10 text-[#005c5b] rounded-full hover:bg-[#e0f2f2] transition-colors border border-[#005c5b]/10 shadow-sm">
                   <Edit2 className="w-3.5 h-3.5" />
@@ -91,27 +99,34 @@ const Gym = () => {
 
       {/* Subscription Status */}
       <div className="px-1">
-         <button className="w-full bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-gray-700 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700 transition-all">
-            <div className="flex items-center gap-4">
-               <div className="p-2 bg-orange-500 rounded-xl">
-                  <AlertCircle className="w-6 h-6 text-white" />
-               </div>
-               <div className="text-left">
-                  <h3 className="text-[15px] font-black text-gray-900 dark:text-white">Subscription Expired</h3>
-                  <p className="text-xs font-bold text-gray-400">Expires on 22 Mar 2026</p>
-               </div>
+        <button
+          onClick={() => navigate('/subscriptions')}
+          className="w-full bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-gray-700 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700 transition-all"
+        >
+          <div className="flex items-center gap-4">
+            <div className={`p-2 rounded-xl ${subscription?.status === 'active' ? 'bg-[#005c5b]' : 'bg-orange-500'}`}>
+              <AlertCircle className="w-6 h-6 text-white" />
             </div>
-            <ChevronRight className="w-5 h-5 text-gray-300 dark:text-gray-600" />
-         </button>
+            <div className="text-left">
+              <h3 className="text-[15px] font-black text-gray-900 dark:text-white">
+                {subscription ? `${subscription.plan_type.replace('_', ' ')} Plan — ${subscription.status === 'active' ? 'Active' : 'Expired'}` : 'No Active Subscription'}
+              </h3>
+              <p className="text-xs font-bold text-gray-400">
+                {subscription ? `Expires ${new Date(subscription.end_date).toLocaleDateString('en-IN')}` : 'Tap to subscribe'}
+              </p>
+            </div>
+          </div>
+          <ChevronRight className="w-5 h-5 text-gray-300 dark:text-gray-600" />
+        </button>
       </div>
 
       {/* Business Controls Section (Unique Styling) */}
       <div className="space-y-4">
         <h3 className="px-5 text-sm font-black text-gray-400 uppercase tracking-widest leading-none">Business Configuration</h3>
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden mx-1">
-          <MenuItem icon={LayoutIcon} label="Dashboard Settings" color="bg-blue-600" subtext="Layout & Widgets" />
-          <MenuItem icon={Smartphone} label="Manage Devices" color="bg-purple-600" onClick={() => navigate('/manage-devices')} subtext="Active Sessions" />
-          <MenuItem icon={ShieldCheck} label="Biometric Access" color="bg-indigo-600" subtext="Security controls" />
+          <MenuItem icon={LayoutIcon}  label="Dashboard Settings" color="bg-blue-600"   subtext="Layout & Widgets"  onClick={() => navigate('/settings')} />
+          <MenuItem icon={Smartphone}  label="Manage Devices"    color="bg-purple-600" subtext="Active Sessions"   onClick={() => navigate('/manage-devices')} />
+          <MenuItem icon={ShieldCheck} label="Biometric Access"  color="bg-indigo-600" subtext="Coming soon"       onClick={() => toast.info('Biometric access is not yet configured')} />
         </div>
       </div>
 
@@ -119,10 +134,10 @@ const Gym = () => {
       <div className="space-y-4">
         <h3 className="px-5 text-sm font-black text-gray-400 uppercase tracking-widest leading-none">Product Management</h3>
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden mx-1">
-          <MenuItem icon={CreditCard} label="Membership Plans" count={0} onClick={() => navigate('/plans')} color="bg-emerald-600" />
-          <MenuItem icon={UserCog} label="Personal Training" count={0} color="bg-cyan-600" />
-          <MenuItem icon={Layers} label="Gym Services" count={0} color="bg-teal-600" />
-          <MenuItem icon={Zap} label="Batch Management" color="bg-amber-600" />
+          <MenuItem icon={CreditCard} label="Membership Plans"  color="bg-emerald-600" onClick={() => navigate('/plans')} />
+          <MenuItem icon={UserCog}    label="Personal Training" color="bg-cyan-600"    onClick={() => navigate('/trainers')} />
+          <MenuItem icon={Layers}     label="Gym Services"      color="bg-teal-600"    onClick={() => toast.info('Gym Services management coming soon')} />
+          <MenuItem icon={Zap}        label="Batch Management"  color="bg-amber-600"   onClick={() => toast.info('Batch Management coming soon')} />
         </div>
       </div>
 
@@ -130,8 +145,8 @@ const Gym = () => {
       <div className="space-y-4">
         <h3 className="px-5 text-sm font-black text-gray-400 uppercase tracking-widest leading-none">Communication</h3>
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden mx-1">
-          <MenuItem icon={MessageSquare} label="WhatsApp Template" color="bg-green-600" />
-          <MenuItem icon={Bell} label="Auto Reminders" color="bg-rose-600" />
+          <MenuItem icon={MessageSquare} label="WhatsApp Template" color="bg-green-600" onClick={() => navigate('/messaging')} />
+          <MenuItem icon={Bell}          label="Auto Reminders"   color="bg-rose-600"  onClick={() => navigate('/messaging')} />
         </div>
       </div>
 
@@ -158,8 +173,8 @@ const Gym = () => {
                <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${isDarkMode ? 'left-7' : 'left-1'}`} />
             </div>
           </button>
-          <MenuItem icon={Languages} label="Language Settings" subtext="English | Hindi" color="bg-gray-500" />
-          <MenuItem icon={Banknote} label="Currency Settings" subtext="INR (₹)" color="bg-gray-500" />
+          <MenuItem icon={Languages} label="Language Settings" subtext="English | Hindi" color="bg-gray-500" onClick={() => toast.info('Multi-language support coming soon')} />
+          <MenuItem icon={Banknote}  label="Currency Settings" subtext="INR (₹)"        color="bg-gray-500" onClick={() => toast.info('Currency is fixed to INR')} />
         </div>
       </div>
 
@@ -169,7 +184,7 @@ const Gym = () => {
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden mx-1">
           <MenuItem icon={MessageCircle} label="Contact Support" onClick={() => navigate('/help')} color="bg-[#005c5b]" />
           <MenuItem icon={HelpCircle} label="Help Center" onClick={() => navigate('/help')} color="bg-[#005c5b]" />
-          <MenuItem icon={Info} label="About GymBook" color="bg-[#005c5b]" />
+          <MenuItem icon={Info} label="About GymBook" color="bg-[#005c5b]" onClick={() => toast.info('IRONMAN FITNESS CRM — v1.0.0')} />
         </div>
       </div>
     </div>

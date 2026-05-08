@@ -13,3 +13,9 @@ out/
 /sanity/node_modules/
 /backend/node_modules/
 /frontend/node_modules/
+
+# Debug / one-off scripts — do not commit
+backend/check_users.js
+backend/cleanup_db.js
+backend/fix_passwords.js
+backend/scratch/

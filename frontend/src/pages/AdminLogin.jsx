@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Dumbbell, Eye, EyeOff, ShieldCheck } from 'lucide-react';
+import { Eye, EyeOff, ShieldCheck } from 'lucide-react';
 import toast from 'react-hot-toast';
-import axios from 'axios';
+import api from '../services/api';
 
 const AdminLogin = () => {
   const [password, setPassword] = useState('');
@@ -13,14 +13,10 @@ const AdminLogin = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-
     try {
-      const response = await axios.post('http://localhost:5000/api/auth/admin-login', { password });
-      
-      // Store admin status
+      const response = await api.post('/auth/admin-login', { password });
       localStorage.setItem('adminToken', response.data.token);
       localStorage.setItem('isAdmin', 'true');
-      
       toast.success('Admin access granted!');
       navigate('/admin-panel');
     } catch (error) {
@@ -88,15 +84,6 @@ const AdminLogin = () => {
               )}
             </button>
           </form>
-
-          <div className="mt-8 text-center">
-            <p className="text-sm text-gray-400">
-              Management Password (Demo):
-            </p>
-            <p className="text-sm font-bold text-gym-accent mt-1">
-              abiadmin
-            </p>
-          </div>
 
           <p className="mt-8 text-center text-xs text-gray-500 italic">
             Secure connection established. Unauthorized access is recorded.

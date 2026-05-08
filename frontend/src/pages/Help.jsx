@@ -1,10 +1,8 @@
-import { useState } from 'react';
-import { 
-  Video, 
-  MessageCircle, 
-  Phone, 
-  Mail, 
-  ExternalLink, 
+import {
+  Video,
+  MessageCircle,
+  Phone,
+  Mail,
   HelpCircle,
   BookOpen,
   Star
@@ -100,7 +98,7 @@ const Help = () => {
               Connect with our support team via chat.
             </p>
             <a
-              href="https://wa.me/919876543210"
+              href={`https://wa.me/${import.meta.env.VITE_SUPPORT_WHATSAPP || '919876543210'}`}
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center justify-center gap-2 w-full py-3 border border-green-500 text-green-400 hover:bg-green-500/10 rounded-lg font-medium transition-colors"
@@ -122,14 +120,18 @@ const Help = () => {
             <h3 className="text-lg font-semibold text-white mb-2">Contact Us</h3>
             <p className="text-gray-400 mb-2">
               For immediate assistance, call us at:{' '}
-              <a href="tel:+919876543210" className="text-white font-medium">+91 98765 43210</a>
+              <a href={`tel:${import.meta.env.VITE_SUPPORT_PHONE || '+919876543210'}`} className="text-white font-medium">
+                {import.meta.env.VITE_SUPPORT_PHONE || '+91 98765 43210'}
+              </a>
             </p>
             <p className="text-gray-400 mb-4">
               Or email us at:{' '}
-              <a href="mailto:support@ironmanfitness.com" className="text-white font-medium">support@ironmanfitness.com</a>
+              <a href={`mailto:${import.meta.env.VITE_SUPPORT_EMAIL || 'support@ironmanfitness.com'}`} className="text-white font-medium">
+                {import.meta.env.VITE_SUPPORT_EMAIL || 'support@ironmanfitness.com'}
+              </a>
             </p>
             <a
-              href="mailto:support@ironmanfitness.com"
+              href={`mailto:${import.meta.env.VITE_SUPPORT_EMAIL || 'support@ironmanfitness.com'}`}
               className="flex items-center justify-center gap-2 w-full py-3 bg-gym-accent hover:bg-gym-accent/90 rounded-lg text-white font-medium transition-colors"
             >
               <Mail className="w-5 h-5" />

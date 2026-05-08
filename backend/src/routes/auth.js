@@ -1,20 +1,47 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const db = require('../db');
 const config = require('../config');
 const { authMiddleware, rbacMiddleware } = require('../middleware/auth');
 const { validate, authSchemas } = require('../middleware/validation');
+
+const sendResetEmail = async (email, resetUrl) => {
+  if (!config.smtp.host || !config.smtp.user) {
+    console.log(`[DEV] Password reset link for ${email}: ${resetUrl}`);
+    return;
+  }
+  try {
+    const nodemailer = require('nodemailer');
+    const transporter = nodemailer.createTransport({
+      host: config.smtp.host,
+      port: config.smtp.port,
+      auth: { user: config.smtp.user, pass: config.smtp.pass },
+    });
+    await transporter.sendMail({
+      from: config.smtp.from,
+      to: email,
+      subject: 'IRONMAN FITNESS — Password Reset',
+      html: `<p>Click the link below to reset your password. It expires in 1 hour.</p>
+             <a href="${resetUrl}">${resetUrl}</a>
+             <p>If you did not request this, ignore this email.</p>`,
+    });
+  } catch (err) {
+    console.error('Failed to send reset email:', err.message);
+  }
+};
 
 const router = express.Router();
 
 // Login
 router.post('/login', validate(authSchemas.login), async (req, res) => {
   try {
-    const { email, password } = req.body;
+    let { email, password } = req.body;
+    email = email.trim();
 
     const result = await db.query(
-      'SELECT * FROM users WHERE email = $1 AND is_active = true',
+      'SELECT * FROM users WHERE LOWER(email) = LOWER($1) AND is_active = true',
       [email]
     );
 
@@ -68,11 +95,26 @@ router.post('/admin-login', async (req, res) => {
   try {
     const { password } = req.body;
 
-    if (password !== config.adminPassword) {
+    if (!password || !config.adminPassword) {
       return res.status(401).json({ error: 'Invalid admin password' });
     }
 
-    // Generate JWT for admin
+    // Timing-safe comparison prevents timing attacks on env-var secrets
+    let isValid = false;
+    try {
+      isValid = crypto.timingSafeEqual(
+        Buffer.from(password),
+        Buffer.from(config.adminPassword)
+      );
+    } catch {
+      // Buffers of different lengths — always invalid
+      isValid = false;
+    }
+
+    if (!isValid) {
+      return res.status(401).json({ error: 'Invalid admin password' });
+    }
+
     const token = jwt.sign(
       { role: 'admin' },
       config.jwt.secret,
@@ -81,10 +123,7 @@ router.post('/admin-login', async (req, res) => {
 
     res.json({
       token,
-      user: {
-        role: 'admin',
-        full_name: 'Administrator'
-      }
+      user: { role: 'admin', full_name: 'Administrator' }
     });
   } catch (error) {
     console.error('Admin login error:', error);
@@ -99,7 +138,7 @@ router.post('/register', authMiddleware, rbacMiddleware('owner'), validate(authS
 
     // Check if email already exists
     const existingUser = await db.query(
-      'SELECT id FROM users WHERE email = $1',
+      'SELECT id FROM users WHERE LOWER(email) = LOWER($1)',
       [email]
     );
 
@@ -133,7 +172,7 @@ router.post('/signup', validate(authSchemas.register), async (req, res) => {
     const { email, password, full_name, phone, role } = req.body;
 
     const existingUser = await db.query(
-      'SELECT id FROM users WHERE email = $1',
+      'SELECT id FROM users WHERE LOWER(email) = LOWER($1)',
       [email]
     );
 
@@ -210,6 +249,85 @@ router.post('/change-password', authMiddleware, async (req, res) => {
   } catch (error) {
     console.error('Change password error:', error);
     res.status(500).json({ error: 'Failed to change password' });
+  }
+});
+
+// Forgot Password
+router.post('/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ error: 'Email is required' });
+
+    const result = await db.query(
+      'SELECT id FROM users WHERE LOWER(email) = LOWER($1) AND is_active = true',
+      [email.trim()]
+    );
+
+    // Always respond success to prevent email enumeration
+    res.json({ message: 'If this email is registered, a reset link has been sent.' });
+
+    if (result.rows.length === 0) return;
+
+    const userId = result.rows[0].id;
+    const token = crypto.randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+    // Invalidate previous tokens for this user
+    await db.query(
+      'UPDATE password_reset_tokens SET used = true WHERE user_id = $1 AND used = false',
+      [userId]
+    );
+
+    await db.query(
+      'INSERT INTO password_reset_tokens (user_id, token, expires_at) VALUES ($1, $2, $3)',
+      [userId, token, expiresAt]
+    );
+
+    const resetUrl = `${config.frontendUrl}/reset-password?token=${token}`;
+    await sendResetEmail(email.trim(), resetUrl);
+  } catch (error) {
+    console.error('Forgot password error:', error);
+  }
+});
+
+// Reset Password
+router.post('/reset-password', async (req, res) => {
+  try {
+    const { token, password } = req.body;
+    if (!token || !password) {
+      return res.status(400).json({ error: 'Token and new password are required' });
+    }
+    if (password.length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters' });
+    }
+
+    const result = await db.query(
+      `SELECT prt.user_id FROM password_reset_tokens prt
+       WHERE prt.token = $1 AND prt.used = false AND prt.expires_at > NOW()`,
+      [token]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(400).json({ error: 'Invalid or expired reset link' });
+    }
+
+    const userId = result.rows[0].user_id;
+    const passwordHash = await bcrypt.hash(password, 12);
+
+    await db.query(
+      'UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2',
+      [passwordHash, userId]
+    );
+
+    await db.query(
+      'UPDATE password_reset_tokens SET used = true WHERE token = $1',
+      [token]
+    );
+
+    res.json({ message: 'Password reset successfully. You can now log in.' });
+  } catch (error) {
+    console.error('Reset password error:', error);
+    res.status(500).json({ error: 'Failed to reset password' });
   }
 });
 

@@ -206,6 +206,38 @@ router.get('/dashboard/summary', authMiddleware, rbacMiddleware('owner', 'manage
   }
 });
 
+// Weekly lead flow — last 7 days daily count
+router.get('/dashboard/weekly-leads', authMiddleware, async (req, res) => {
+  try {
+    const { branch_id } = req.query;
+    const params = [];
+    let branchClause = '';
+    if (branch_id || req.user.branch_id) {
+      params.push(branch_id || req.user.branch_id);
+      branchClause = `AND branch_id = $1`;
+    }
+    const result = await db.query(
+      `SELECT
+         TO_CHAR(d.day, 'Dy') AS name,
+         COALESCE(COUNT(l.id), 0)::int AS leads
+       FROM generate_series(
+         CURRENT_DATE - INTERVAL '6 days',
+         CURRENT_DATE,
+         '1 day'::interval
+       ) AS d(day)
+       LEFT JOIN leads l
+         ON l.created_at::date = d.day::date ${branchClause}
+       GROUP BY d.day
+       ORDER BY d.day`,
+      params
+    );
+    res.json({ weekly: result.rows });
+  } catch (error) {
+    console.error('Weekly leads error:', error);
+    res.status(500).json({ error: 'Failed to get weekly leads' });
+  }
+});
+
 // KPIs
 router.get('/dashboard/kpis', authMiddleware, rbacMiddleware('owner', 'manager'), async (req, res) => {
   try {

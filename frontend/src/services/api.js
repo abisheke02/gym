@@ -41,6 +41,7 @@ export const authAPI = {
   getMe: () => api.get('/auth/me'),
   changePassword: (data) => api.post('/auth/change-password', data),
   forgotPassword: (data) => api.post('/auth/forgot-password', data),
+  resetPassword: (data) => api.post('/auth/reset-password', data),
 };
 
 // Branches API
@@ -76,6 +77,7 @@ export const membersAPI = {
   getById: (id) => api.get(`/members/${id}`),
   create: (data) => api.post('/members', data),
   update: (id, data) => api.put(`/members/${id}`, data),
+  delete: (id) => api.delete(`/members/${id}`),
   checkIn: (id) => api.post(`/members/${id}/checkin`),
   renew: (id, data) => api.post(`/members/${id}/renew`, data),
   getInactive: () => api.get('/members/inactive/list'),
@@ -122,6 +124,38 @@ export const financeAPI = {
   getDashboardSummary: (branchId) => api.get('/dashboard/summary', { params: { branch_id: branchId } }),
   getReceptionistSummary: (branchId) => api.get('/dashboard/receptionist-summary', { params: { branch_id: branchId } }),
   getKPIs: (branchId) => api.get('/dashboard/kpis', { params: { branch_id: branchId } }),
+  getWeeklyLeads: (branchId) => api.get('/dashboard/weekly-leads', { params: { branch_id: branchId } }),
+};
+
+// Subscription API (gym's SaaS subscription)
+export const subscriptionAPI = {
+  getPlans: () => api.get('/subscriptions/plans'),
+  getCurrent: () => api.get('/subscriptions/current'),
+  getHistory: () => api.get('/subscriptions/history'),
+  createOrder: (data) => api.post('/subscriptions/create-order', data),
+  verifyPayment: (data) => api.post('/subscriptions/verify-payment', data),
+};
+
+// Payment Gateway API (Razorpay for member payments)
+export const gatewayAPI = {
+  createOrder: (data) => api.post('/gateway/create-order', data),
+  verify: (data) => api.post('/gateway/verify', data),
+  getTransactions: (params) => api.get('/gateway/transactions', { params }),
+};
+
+// Messaging API
+export const messagingAPI = {
+  getHistory: (params) => api.get('/messaging/history', { params }),
+  sendBulk: (data) => api.post('/messaging/send-bulk', data),
+};
+
+// Attendance API
+export const attendanceAPI = {
+  checkIn: (data) => api.post('/attendance/checkin', data),
+  checkOut: (data) => api.post('/attendance/checkout', data),
+  getList: (params) => api.get('/attendance', { params }),
+  getStats: (params) => api.get('/attendance/stats', { params }),
+  getMemberHistory: (memberId) => api.get(`/attendance/member/${memberId}`),
 };
 
 export default api;

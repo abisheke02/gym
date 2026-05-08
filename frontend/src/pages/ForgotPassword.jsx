@@ -13,14 +13,11 @@ const ForgotPassword = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      // The backend may not have this endpoint yet - we'll add it
-      await authAPI.forgotPassword?.({ email }) || 
-        toast.success('If this email is registered, a reset link has been sent.');
+      await authAPI.forgotPassword({ email });
       setSent(true);
     } catch (error) {
-      // Even on error, don't reveal whether email exists
-      toast.success('If this email is registered, a reset link has been sent.');
-      setSent(true);
+      // Show generic error — don't reveal whether email exists
+      toast.error('Something went wrong. Please try again.');
     } finally {
       setLoading(false);
     }

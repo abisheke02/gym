@@ -5,10 +5,13 @@
 const { Pool } = require('pg');
 const config = require('../config');
 
-// Always use the Supabase/PostgreSQL connection string
+// Use DATABASE_URL — disable SSL for local Docker, enable for Supabase/cloud
+const dbUrl = process.env.DATABASE_URL || '';
 const poolConfig = {
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false } // Required for external Supabase connection
+  connectionString: dbUrl,
+  ssl: dbUrl.includes('supabase') || dbUrl.includes('render') || dbUrl.includes('neon')
+    ? { rejectUnauthorized: false }
+    : false,
 };
 
 const pool = new Pool(poolConfig);

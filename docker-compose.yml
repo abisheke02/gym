@@ -10,7 +10,7 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
     ports:
-      - "5432:5432"
+      - "5435:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -28,6 +28,7 @@ services:
     environment:
       NODE_ENV: development
       PORT: 5000
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/gym_db
       DB_HOST: postgres
       DB_PORT: 5432
       DB_NAME: gym_db
@@ -38,6 +39,9 @@ services:
       FRONTEND_URL: http://localhost:3000
       LEAD_RESPONSE_SLA: 10
       DEFAULT_ANNUAL_PRICE: 10000
+      # Razorpay Payment Gateway (replace with your actual keys from razorpay.com/dashboard)
+      RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID:-rzp_test_placeholder}
+      RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET:-placeholder_secret}
       # Add your WhatsApp and Meta credentials here
       WHATSAPP_PHONE_NUMBER_ID: ${WHATSAPP_PHONE_NUMBER_ID}
       WHATSAPP_ACCESS_TOKEN: ${WHATSAPP_ACCESS_TOKEN}

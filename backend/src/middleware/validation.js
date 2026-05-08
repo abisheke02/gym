@@ -110,7 +110,12 @@ const memberSchemas = {
     plan_end_date: Joi.date().iso().required(),
     membership_id: Joi.string().allow('', null).optional(),
     amount: Joi.number().min(0).optional(),
-    payment_mode: Joi.string().valid('cash', 'upi', 'card').optional()
+    payment_mode: Joi.string().valid('cash', 'upi', 'card').optional(),
+    pt_trainer_id: Joi.string().uuid().allow(null).optional(),
+    pt_joining_date: Joi.date().iso().allow(null).optional(),
+    pt_end_date: Joi.date().iso().allow(null).optional(),
+    pt_sessions_total: Joi.number().min(0).optional(),
+    pt_sessions_completed: Joi.number().min(0).optional(),
   }),
   
   update: Joi.object({
@@ -125,7 +130,12 @@ const memberSchemas = {
     plan_start_date: Joi.date().iso(),
     plan_end_date: Joi.date().iso(),
     status: Joi.string().valid('active', 'expired', 'frozen', 'cancelled'),
-    membership_id: Joi.string().allow('', null).optional()
+    membership_id: Joi.string().allow('', null).optional(),
+    pt_trainer_id: Joi.string().uuid().allow(null).optional(),
+    pt_joining_date: Joi.date().iso().allow(null).optional(),
+    pt_end_date: Joi.date().iso().allow(null).optional(),
+    pt_sessions_total: Joi.number().min(0).optional(),
+    pt_sessions_completed: Joi.number().min(0).optional(),
   }),
 };
 
