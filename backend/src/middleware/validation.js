@@ -9,7 +9,6 @@ const validate = (schema) => {
         field: detail.path.join('.'),
         message: detail.message
       }));
-      console.error('Validation failed:', errors);
       return res.status(400).json({ error: 'Validation failed', errors });
     }
     
@@ -161,7 +160,7 @@ const planSchemas = {
 const paymentSchemas = {
   create: Joi.object({
     member_id: Joi.string().uuid().required(),
-    amount: Joi.number().min(0).required(),
+    amount: Joi.number().min(1).required(),
     payment_mode: Joi.string().valid('cash', 'upi', 'card', 'online').required(),
     transaction_id: Joi.string().max(100),
     discount_amount: Joi.number().min(0).default(0),
@@ -175,7 +174,7 @@ const expenseSchemas = {
   create: Joi.object({
     branch_id: Joi.string().uuid().required(),
     category: Joi.string().valid('salary', 'rent', 'utilities', 'ads', 'maintenance', 'supplies', 'other').required(),
-    amount: Joi.number().min(0).required(),
+    amount: Joi.number().min(1).required(),
     description: Joi.string().max(500),
     expense_date: Joi.date().iso().required(),
   }),

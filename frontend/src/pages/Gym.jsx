@@ -1,18 +1,14 @@
 import { useState, useEffect } from 'react';
 import { subscriptionAPI } from '../services/api';
-import { 
-  Fingerprint, 
-  QrCode, 
-  UserCog, 
-  Receipt, 
-  MapPin, 
-  Languages, 
-  Banknote, 
-  MessageCircle, 
-  HelpCircle, 
+import toast from 'react-hot-toast';
+import {
+  UserCog,
+  Languages,
+  Banknote,
+  MessageCircle,
+  HelpCircle,
   Info,
   ChevronRight,
-  ChevronLeft,
   Camera,
   Edit2,
   AlertCircle,
@@ -22,7 +18,6 @@ import {
   Layers,
   MessageSquare,
   Bell,
-  Activity,
   Sun,
   Moon,
   Smartphone,

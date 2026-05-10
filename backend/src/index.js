@@ -85,27 +85,26 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Internal server error' });
 });
 
-// Start server
-const PORT = config.port;
-
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`
+// Start server only when run directly (not when imported by tests)
+if (require.main === module) {
+  const PORT = config.port;
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`
 ╔═══════════════════════════════════════════════════╗
 ║                                                   ║
-║   🏋️ IRONMAN FITNESS Gym CRM Server               ║
+║   IRONMAN FITNESS Gym CRM Server                  ║
 ║   Running on port ${PORT}                          ║
 ║   Environment: ${config.nodeEnv}                      ║
 ║                                                   ║
 ╚═══════════════════════════════════════════════════╝
-  `);
-  
-  // Initialize scheduler
-  try {
-    scheduler.init();
-  } catch (err) {
-    console.error('⚠️ Scheduler failed to initialize:', err.message);
-  }
-});
+    `);
+    try {
+      scheduler.init();
+    } catch (err) {
+      console.error('⚠️ Scheduler failed to initialize:', err.message);
+    }
+  });
+}
 
 // Graceful shutdown
 process.on('SIGTERM', () => {

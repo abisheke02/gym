@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { financeAPI, membersAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import toast from 'react-hot-toast';
 import {
   Users, UserPlus, TrendingUp, Clock,
   ChevronRight, Wallet, ClipboardList, Activity,
