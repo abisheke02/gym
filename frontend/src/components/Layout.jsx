@@ -19,7 +19,8 @@ import {
   Info,
   Calendar,
   ChevronRight,
-  BadgeCheck
+  BadgeCheck,
+  UserCog,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { branchesAPI, subscriptionAPI } from '../services/api';
@@ -74,6 +75,7 @@ const Layout = () => {
     {
       title: 'Management',
       items: [
+        { path: '/manage-staff', icon: UserCog, label: 'Manage Staff', roles: ['owner'] },
         { path: '/branches', icon: GitBranch, label: 'Branches', roles: ['owner', 'manager'] },
         { path: '/trainers', icon: Users, label: 'Trainers', roles: ['owner', 'manager'] },
         { path: '/manage-enquiry', icon: Info, label: 'Enquiry' },

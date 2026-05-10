@@ -30,6 +30,7 @@ import ManageDevices from './pages/ManageDevices';
 import Gym from './pages/Gym';
 import Trainers from './pages/Trainers';
 import Subscriptions from './pages/Subscriptions';
+import ManageStaff from './pages/ManageStaff';
 
 
 const ProtectedRoute = ({ children, roles }) => {
@@ -124,6 +125,11 @@ function App() {
         <Route path="subscriptions" element={
           <ProtectedRoute roles={['owner']}>
             <Subscriptions />
+          </ProtectedRoute>
+        } />
+        <Route path="manage-staff" element={
+          <ProtectedRoute roles={['owner']}>
+            <ManageStaff />
           </ProtectedRoute>
         } />
       </Route>

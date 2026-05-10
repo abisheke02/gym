@@ -347,8 +347,9 @@ router.post('/admin/sync', authMiddleware, rbacMiddleware('owner'), async (req, 
 router.get('/admin/users', authMiddleware, rbacMiddleware('owner'), async (req, res) => {
   try {
     const result = await db.query(`
-      SELECT u.id, u.email, u.full_name, u.role, u.is_active, u.created_at, b.name as branch_name 
-      FROM users u 
+      SELECT u.id, u.email, u.full_name, u.role, u.is_active, u.created_at, u.phone,
+             u.branch_id, b.name as branch_name
+      FROM users u
       LEFT JOIN branches b ON u.branch_id = b.id
       ORDER BY u.created_at DESC
     `);
@@ -356,6 +357,127 @@ router.get('/admin/users', authMiddleware, rbacMiddleware('owner'), async (req, 
   } catch (error) {
     console.error('Get users error:', error);
     res.status(500).json({ error: 'Failed to fetch users' });
+  }
+});
+
+// ── Staff Management (owner only) ────────────────────────────────────────────
+
+// GET /api/auth/staff — all staff accounts
+router.get('/staff', authMiddleware, rbacMiddleware('owner', 'manager'), async (req, res) => {
+  try {
+    const result = await db.query(`
+      SELECT u.id, u.email, u.full_name, u.role, u.phone, u.is_active,
+             u.branch_id, b.name AS branch_name, u.created_at
+      FROM users u
+      LEFT JOIN branches b ON u.branch_id = b.id
+      WHERE u.role != 'owner'
+      ORDER BY b.name, u.full_name
+    `);
+    res.json({ staff: result.rows });
+  } catch (error) {
+    console.error('Get staff error:', error);
+    res.status(500).json({ error: 'Failed to fetch staff' });
+  }
+});
+
+// POST /api/auth/staff — create staff account
+router.post('/staff', authMiddleware, rbacMiddleware('owner'), async (req, res) => {
+  try {
+    const { email, password, full_name, phone, role, branch_id } = req.body;
+
+    if (!email || !password || !full_name || !role) {
+      return res.status(400).json({ error: 'email, password, full_name and role are required' });
+    }
+    if (!['manager', 'sales', 'accountant', 'receptionist'].includes(role)) {
+      return res.status(400).json({ error: 'Invalid role. Use: manager, sales, accountant, receptionist' });
+    }
+    if (password.length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters' });
+    }
+
+    const existing = await db.query('SELECT id FROM users WHERE LOWER(email) = LOWER($1)', [email]);
+    if (existing.rows.length > 0) {
+      return res.status(400).json({ error: 'Email already registered' });
+    }
+
+    const passwordHash = await bcrypt.hash(password, 12);
+    const result = await db.query(`
+      INSERT INTO users (email, password_hash, full_name, phone, role, branch_id)
+      VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING id, email, full_name, role, phone, branch_id, created_at
+    `, [email, passwordHash, full_name, phone || null, role, branch_id || null]);
+
+    res.status(201).json({ message: 'Staff account created', user: result.rows[0] });
+  } catch (error) {
+    console.error('Create staff error:', error);
+    res.status(500).json({ error: 'Failed to create staff account' });
+  }
+});
+
+// PUT /api/auth/staff/:id — update staff details
+router.put('/staff/:id', authMiddleware, rbacMiddleware('owner'), async (req, res) => {
+  try {
+    const { full_name, phone, role, branch_id, is_active } = req.body;
+    const result = await db.query(`
+      UPDATE users
+      SET full_name  = COALESCE($1, full_name),
+          phone      = COALESCE($2, phone),
+          role       = COALESCE($3, role),
+          branch_id  = $4,
+          is_active  = COALESCE($5, is_active),
+          updated_at = NOW()
+      WHERE id = $6 AND role != 'owner'
+      RETURNING id, email, full_name, role, phone, branch_id, is_active
+    `, [full_name, phone, role, branch_id || null, is_active, req.params.id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Staff member not found' });
+    }
+    res.json({ message: 'Staff updated', user: result.rows[0] });
+  } catch (error) {
+    console.error('Update staff error:', error);
+    res.status(500).json({ error: 'Failed to update staff' });
+  }
+});
+
+// PUT /api/auth/staff/:id/password — owner resets staff password
+router.put('/staff/:id/password', authMiddleware, rbacMiddleware('owner'), async (req, res) => {
+  try {
+    const { password } = req.body;
+    if (!password || password.length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters' });
+    }
+    const hash = await bcrypt.hash(password, 12);
+    const result = await db.query(
+      `UPDATE users SET password_hash = $1, updated_at = NOW()
+       WHERE id = $2 AND role != 'owner' RETURNING id`,
+      [hash, req.params.id]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Staff member not found' });
+    }
+    res.json({ message: 'Password reset successfully' });
+  } catch (error) {
+    console.error('Reset staff password error:', error);
+    res.status(500).json({ error: 'Failed to reset password' });
+  }
+});
+
+// DELETE /api/auth/staff/:id — deactivate staff (soft delete)
+router.delete('/staff/:id', authMiddleware, rbacMiddleware('owner'), async (req, res) => {
+  try {
+    const result = await db.query(
+      `UPDATE users SET is_active = false, updated_at = NOW()
+       WHERE id = $1 AND role != 'owner' RETURNING id, full_name`,
+      [req.params.id]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Staff member not found' });
+    }
+    res.json({ message: `${result.rows[0].full_name} deactivated` });
+  } catch (error) {
+    console.error('Delete staff error:', error);
+    res.status(500).json({ error: 'Failed to deactivate staff' });
   }
 });
 

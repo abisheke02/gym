@@ -144,6 +144,15 @@ export const gatewayAPI = {
   getTransactions: (params) => api.get('/gateway/transactions', { params }),
 };
 
+// Staff Management API (owner only)
+export const staffAPI = {
+  getAll: () => api.get('/auth/staff'),
+  create: (data) => api.post('/auth/staff', data),
+  update: (id, data) => api.put(`/auth/staff/${id}`, data),
+  resetPassword: (id, password) => api.put(`/auth/staff/${id}/password`, { password }),
+  deactivate: (id) => api.delete(`/auth/staff/${id}`),
+};
+
 // Messaging API
 export const messagingAPI = {
   getHistory: (params) => api.get('/messaging/history', { params }),
