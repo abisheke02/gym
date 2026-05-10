@@ -2,12 +2,11 @@ import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { membersAPI, plansAPI } from '../services/api';
 import { 
-  ArrowLeft, 
-  Phone, 
-  Mail, 
-  MapPin, 
+  ArrowLeft,
+  Phone,
+  Mail,
+  MapPin,
   Calendar,
-  CreditCard,
   Clock,
   RefreshCw,
   CheckCircle
@@ -42,7 +41,6 @@ const MemberDetail = () => {
       const response = await plansAPI.getAll();
       setPlans(response.data.plans);
     } catch (error) {
-      console.error('Failed to fetch plans');
     }
   };
 

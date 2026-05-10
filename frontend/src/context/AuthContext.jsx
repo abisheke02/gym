@@ -25,7 +25,6 @@ export const AuthProvider = ({ children }) => {
       setUser(response.data.user);
       localStorage.setItem('user', JSON.stringify(response.data.user));
     } catch (error) {
-      console.error('Failed to fetch user:', error);
       logout();
     } finally {
       setLoading(false);

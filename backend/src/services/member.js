@@ -188,9 +188,9 @@ class MemberService {
         FROM members m
         LEFT JOIN branches b ON m.branch_id = b.id
         LEFT JOIN plans p ON m.plan_id = p.id
-        WHERE m.is_active = true
+        WHERE ${filters.include_inactive ? 'm.is_active = false' : 'm.is_active = true'}
       `;
-      
+
       const params = [];
       let paramIndex = 1;
 

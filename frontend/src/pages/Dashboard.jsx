@@ -44,7 +44,7 @@ const Dashboard = () => {
 
       setMemberCategories({ plans: plansCount, gender: genderCount, branch: branchCount });
     } catch (err) {
-      console.error('Dashboard fetch error:', err);
+      toast.error('Failed to load dashboard data');
     } finally {
       setLoading(false);
     }

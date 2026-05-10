@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Dumbbell, Eye, EyeOff } from 'lucide-react';
 import toast from 'react-hot-toast';
-import axios from 'axios';
+import { authAPI } from '../services/api';
 
 const SignUp = () => {
   const [formData, setFormData] = useState({
@@ -16,23 +16,22 @@ const SignUp = () => {
   const navigate = useNavigate();
 
   const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
+    setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (formData.password.length < 6) {
+      toast.error('Password must be at least 6 characters');
+      return;
+    }
     setLoading(true);
-
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-      await axios.post(`${apiUrl}/auth/signup`, formData);
-      toast.success('Account created successfully! Please log in.');
+      await authAPI.signup(formData);
+      toast.success('Account created! Please log in.');
       navigate('/login');
     } catch (error) {
-      toast.error(error.response?.data?.error || 'Sign up failed. Check details.');
+      toast.error(error.response?.data?.error || 'Sign up failed. Check your details.');
     } finally {
       setLoading(false);
     }

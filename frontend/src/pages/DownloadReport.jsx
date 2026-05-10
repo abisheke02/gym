@@ -78,7 +78,6 @@ const DownloadReport = () => {
       toast.success('Report downloaded successfully!');
     } catch (error) {
       toast.error('Failed to generate report');
-      console.error(error);
     } finally {
       setLoading(false);
     }

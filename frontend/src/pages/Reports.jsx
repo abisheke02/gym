@@ -62,7 +62,6 @@ const Reports = () => {
       const response = await branchesAPI.getAll();
       setBranches(response.data.branches);
     } catch (error) {
-      console.error('Failed to fetch branches');
     }
   };
 

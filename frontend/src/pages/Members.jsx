@@ -74,7 +74,6 @@ const Members = () => {
       const response = await branchesAPI.getAll();
       setBranches(response.data.branches);
     } catch (error) {
-      console.error('Failed to fetch branches');
     }
   };
 
@@ -83,7 +82,6 @@ const Members = () => {
       const response = await plansAPI.getAll();
       setPlans(response.data.plans);
     } catch (error) {
-      console.error('Failed to fetch plans');
     }
   };
 
@@ -92,7 +90,6 @@ const Members = () => {
       const response = await trainersAPI.getAll({ branch_id: effectiveBranchId });
       setTrainers(response.data.trainers);
     } catch (error) {
-      console.error('Failed to fetch trainers');
     }
   };
 

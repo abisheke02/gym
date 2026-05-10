@@ -1,13 +1,6 @@
 import { useState, useEffect } from 'react';
-import { membersAPI, branchesAPI } from '../services/api';
-import { 
-  Trash2, 
-  RotateCcw, 
-  Search, 
-  User,
-  Phone,
-  Calendar
-} from 'lucide-react';
+import { membersAPI } from '../services/api';
+import { Trash2, RotateCcw, Search, Phone } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const DeletedMembers = () => {
@@ -21,10 +14,10 @@ const DeletedMembers = () => {
 
   const fetchDeletedMembers = async () => {
     try {
-      const response = await membersAPI.getAll({ status: 'cancelled', include_inactive: true });
+      const response = await membersAPI.getAll({ include_inactive: true });
       setDeletedMembers(response.data.members || []);
     } catch (error) {
-      console.error('Failed to fetch deleted members:', error);
+      toast.error('Failed to fetch deleted members');
     } finally {
       setLoading(false);
     }

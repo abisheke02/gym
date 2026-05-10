@@ -26,7 +26,7 @@ import { branchesAPI, subscriptionAPI } from '../services/api';
 
 const Layout = () => {
   const { user, logout } = useAuth();
-  const { isDarkMode } = useTheme();
+  useTheme();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [branches, setBranches] = useState([]);
@@ -51,7 +51,7 @@ const Layout = () => {
       const response = await branchesAPI.getAll();
       setBranches(response.data.branches);
     } catch (error) {
-      console.error('Failed to fetch branches');
+      // branches unavailable — sidebar branch list will be empty
     }
   };
 

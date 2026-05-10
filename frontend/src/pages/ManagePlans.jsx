@@ -35,7 +35,7 @@ const ManagePlans = () => {
       const response = await plansAPI.getAll();
       setPlans(response.data.plans || []);
     } catch (error) {
-      console.error('Failed to fetch plans:', error);
+      toast.error('Failed to load plans');
     } finally {
       setLoading(false);
     }

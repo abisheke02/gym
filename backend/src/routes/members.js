@@ -9,19 +9,24 @@ const router = express.Router();
 // Get all members with filters
 router.get('/', authMiddleware, async (req, res) => {
   try {
-    const { status, branch_id, plan_id, search, limit } = req.query;
-    
+    const { status, branch_id, plan_id, search, limit, include_inactive } = req.query;
+
     const filters = {
       status,
       branch_id,
       plan_id,
       search,
-      limit: limit ? parseInt(limit) : 100
+      limit: limit ? parseInt(limit) : 100,
+      include_inactive: include_inactive === 'true',
     };
 
-    // Apply branch filter based on role
+    // Non-owners are always scoped to their branch
     if (['sales', 'accountant'].includes(req.user.role) && req.user.branch_id) {
       filters.branch_id = req.user.branch_id;
+    }
+    // Only owners/managers can query deleted members
+    if (filters.include_inactive && !['owner', 'manager'].includes(req.user.role)) {
+      filters.include_inactive = false;
     }
 
     const members = await memberService.getMembers(filters);

@@ -21,7 +21,6 @@ const Settings = () => {
       const response = await plansAPI.getAll();
       setPlans(response.data.plans);
     } catch (error) {
-      console.error('Failed to fetch plans');
     }
   };
 

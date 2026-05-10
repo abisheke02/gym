@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { financeAPI } from '../services/api';
+import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 
 import { 
@@ -40,7 +41,7 @@ const ReceptionDashboard = () => {
       setSummary(summaryRes.data);
       setWeeklyLeads(weeklyRes.data.weekly || []);
     } catch (error) {
-      console.error('Failed to fetch receptionist dashboard data:', error);
+      toast.error('Failed to load dashboard data');
     } finally {
       setLoading(false);
     }

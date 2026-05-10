@@ -49,7 +49,6 @@ const ManageExpense = () => {
       const response = await branchesAPI.getAll();
       setBranches(response.data.branches);
     } catch (error) {
-      console.error('Failed to fetch branches');
     }
   };
 
@@ -72,7 +71,7 @@ const ManageExpense = () => {
       setExpenses(expenseList);
       setTotal(expenseList.reduce((sum, e) => sum + parseFloat(e.amount), 0));
     } catch (error) {
-      console.error('Failed to fetch expenses:', error);
+      toast.error('Failed to load expenses');
       setExpenses([]);
       setTotal(0);
     } finally {
