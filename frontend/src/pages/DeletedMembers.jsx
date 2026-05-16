@@ -14,7 +14,7 @@ const DeletedMembers = () => {
 
   const fetchDeletedMembers = async () => {
     try {
-      const response = await membersAPI.getAll({ include_inactive: true });
+      const response = await membersAPI.getAll({ include_inactive: true, status: 'cancelled' });
       setDeletedMembers(response.data.members || []);
     } catch (error) {
       toast.error('Failed to fetch deleted members');

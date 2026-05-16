@@ -27,6 +27,7 @@ const ManageStaff = () => {
   const [branches, setBranches]     = useState([]);
   const [loading, setLoading]       = useState(true);
   const [search, setSearch]         = useState('');
+  const [showInactive, setShowInactive] = useState(false);
   const [showModal, setShowModal]   = useState(false);
   const [editingStaff, setEditingStaff] = useState(null); // null = create mode
   const [pwModal, setPwModal]       = useState(null); // staff object
@@ -124,12 +125,26 @@ const ManageStaff = () => {
     }
   };
 
-  const filtered = staff.filter(s =>
-    !search ||
-    s.full_name?.toLowerCase().includes(search.toLowerCase()) ||
-    s.email?.toLowerCase().includes(search.toLowerCase()) ||
-    s.branch_name?.toLowerCase().includes(search.toLowerCase())
-  );
+  const handleReactivate = async (member) => {
+    try {
+      await staffAPI.reactivate(member.id);
+      toast.success(`${member.full_name} reactivated`);
+      fetchData();
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to reactivate');
+    }
+  };
+
+  const filtered = staff.filter(s => {
+    if (!showInactive && !s.is_active) return false;
+    return (
+      !search ||
+      s.full_name?.toLowerCase().includes(search.toLowerCase()) ||
+      s.email?.toLowerCase().includes(search.toLowerCase()) ||
+      s.branch_name?.toLowerCase().includes(search.toLowerCase())
+    );
+  });
+  const inactiveCount = staff.filter(s => !s.is_active).length;
 
   // Group by branch
   const grouped = filtered.reduce((acc, s) => {
@@ -170,16 +185,40 @@ const ManageStaff = () => {
         ))}
       </div>
 
-      {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search by name, email or branch..."
-          className="w-full pl-11 pr-4 py-3 bg-white dark:bg-gray-800 rounded-2xl text-sm font-bold outline-none border-2 border-transparent focus:border-[#005c5b] dark:text-white shadow-sm"
-        />
+      {/* Search + inactive toggle */}
+      <div className="flex gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search by name, email or branch..."
+            className="w-full pl-11 pr-4 py-3 bg-white dark:bg-gray-800 rounded-2xl text-sm font-bold outline-none border-2 border-transparent focus:border-[#005c5b] dark:text-white shadow-sm"
+          />
+        </div>
+        {inactiveCount > 0 && (
+          <button
+            onClick={() => setShowInactive(!showInactive)}
+            className={`px-4 py-3 rounded-2xl text-xs font-black uppercase tracking-widest transition-all shrink-0 ${
+              showInactive
+                ? 'bg-rose-500 text-white'
+                : 'bg-white dark:bg-gray-800 text-gray-400 border border-gray-200 dark:border-gray-700'
+            }`}
+          >
+            {showInactive ? `Hide Inactive (${inactiveCount})` : `Show Inactive (${inactiveCount})`}
+          </button>
+        )}
       </div>
+
+      {/* No branches warning */}
+      {branches.length === 0 && !loading && (
+        <div className="bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-700 rounded-2xl p-4 flex items-center gap-3">
+          <span className="text-amber-500 text-lg">⚠️</span>
+          <p className="text-xs font-bold text-amber-700 dark:text-amber-400">
+            No branches found. Create branches first in the <strong>Branches</strong> section so you can assign staff to specific branches.
+          </p>
+        </div>
+      )}
 
       {/* Staff List grouped by branch */}
       {loading ? (
@@ -235,14 +274,23 @@ const ManageStaff = () => {
                     >
                       <Key className="w-3.5 h-3.5" />
                     </button>
-                    <button
-                      onClick={() => handleDeactivate(s)}
-                      title="Deactivate"
-                      disabled={!s.is_active}
-                      className="p-2 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-rose-500 hover:text-white text-gray-500 dark:text-gray-300 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                    {s.is_active ? (
+                      <button
+                        onClick={() => handleDeactivate(s)}
+                        title="Deactivate"
+                        className="p-2 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-rose-500 hover:text-white text-gray-500 dark:text-gray-300 transition-all"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handleReactivate(s)}
+                        title="Reactivate"
+                        className="p-2 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-green-500 hover:text-white text-gray-500 dark:text-gray-300 transition-all"
+                      >
+                        <CheckCircle className="w-3.5 h-3.5" />
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}

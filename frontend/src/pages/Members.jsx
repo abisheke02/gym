@@ -193,12 +193,6 @@ const Members = () => {
            <p className="text-sm font-bold text-gray-400 dark:text-gray-500">Managing {members.length} active and expired memberships.</p>
         </div>
         <div className="flex gap-4">
-           <button 
-             onClick={() => setShowCreditsModal(true)}
-             className="px-6 py-3 bg-white dark:bg-gray-800 text-[#005c5b] dark:text-[#01a2a1] rounded-2xl font-black text-xs uppercase tracking-widest border border-gray-100 dark:border-gray-700 shadow-sm group hover:border-[#005c5b]"
-           >
-              Message Credits: ₹3
-           </button>
            <button
              onClick={() => setShowModal(true)}
              className="btn-primary flex items-center gap-3 px-8 shadow-xl shadow-[#005c5b]/30"

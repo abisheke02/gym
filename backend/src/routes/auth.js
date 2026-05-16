@@ -365,14 +365,21 @@ router.get('/admin/users', authMiddleware, rbacMiddleware('owner'), async (req, 
 // GET /api/auth/staff — all staff accounts
 router.get('/staff', authMiddleware, rbacMiddleware('owner', 'manager'), async (req, res) => {
   try {
+    const params = [];
+    let branchFilter = '';
+    // Managers only see staff in their own branch
+    if (req.user.role === 'manager' && req.user.branch_id) {
+      params.push(req.user.branch_id);
+      branchFilter = `AND (u.branch_id = $1 OR u.branch_id IS NULL)`;
+    }
     const result = await db.query(`
       SELECT u.id, u.email, u.full_name, u.role, u.phone, u.is_active,
              u.branch_id, b.name AS branch_name, u.created_at
       FROM users u
       LEFT JOIN branches b ON u.branch_id = b.id
-      WHERE u.role != 'owner'
-      ORDER BY b.name, u.full_name
-    `);
+      WHERE u.role != 'owner' ${branchFilter}
+      ORDER BY b.name NULLS LAST, u.full_name
+    `, params);
     res.json({ staff: result.rows });
   } catch (error) {
     console.error('Get staff error:', error);
@@ -460,6 +467,24 @@ router.put('/staff/:id/password', authMiddleware, rbacMiddleware('owner'), async
   } catch (error) {
     console.error('Reset staff password error:', error);
     res.status(500).json({ error: 'Failed to reset password' });
+  }
+});
+
+// PATCH /api/auth/staff/:id/reactivate — reactivate a deactivated staff
+router.patch('/staff/:id/reactivate', authMiddleware, rbacMiddleware('owner'), async (req, res) => {
+  try {
+    const result = await db.query(
+      `UPDATE users SET is_active = true, updated_at = NOW()
+       WHERE id = $1 AND role != 'owner' RETURNING id, full_name`,
+      [req.params.id]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Staff member not found' });
+    }
+    res.json({ message: `${result.rows[0].full_name} reactivated` });
+  } catch (error) {
+    console.error('Reactivate staff error:', error);
+    res.status(500).json({ error: 'Failed to reactivate staff' });
   }
 });
 

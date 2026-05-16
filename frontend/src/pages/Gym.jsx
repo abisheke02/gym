@@ -92,10 +92,10 @@ const Gym = () => {
          </div>
       </div>
 
-      {/* Subscription Status */}
+      {/* Subscription Status — only owners can manage subscription */}
       <div className="px-1">
         <button
-          onClick={() => navigate('/subscriptions')}
+          onClick={() => user?.role === 'owner' ? navigate('/subscriptions') : null}
           className="w-full bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-gray-700 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700 transition-all"
         >
           <div className="flex items-center gap-4">

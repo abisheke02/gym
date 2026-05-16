@@ -151,6 +151,7 @@ export const staffAPI = {
   update: (id, data) => api.put(`/auth/staff/${id}`, data),
   resetPassword: (id, password) => api.put(`/auth/staff/${id}/password`, { password }),
   deactivate: (id) => api.delete(`/auth/staff/${id}`),
+  reactivate: (id) => api.patch(`/auth/staff/${id}/reactivate`),
 };
 
 // Messaging API

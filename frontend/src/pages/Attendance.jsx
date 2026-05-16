@@ -86,7 +86,7 @@ const Attendance = () => {
   const handleCheckOut = async (memberId) => {
     setActionLoading(memberId);
     try {
-      await attendanceAPI.checkOut({ member_id: memberId });
+      await attendanceAPI.checkOut({ member_id: memberId, branch_id: branchId || null });
       toast.success('Checked out successfully');
       fetchData();
     } catch (err) {

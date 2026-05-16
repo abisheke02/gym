@@ -21,7 +21,7 @@ router.get('/', authMiddleware, async (req, res) => {
     };
 
     // Non-owners are always scoped to their branch
-    if (['sales', 'accountant'].includes(req.user.role) && req.user.branch_id) {
+    if (['sales', 'accountant', 'receptionist'].includes(req.user.role) && req.user.branch_id) {
       filters.branch_id = req.user.branch_id;
     }
     // Only owners/managers can query deleted members
