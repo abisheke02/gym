@@ -145,6 +145,13 @@ export const gatewayAPI = {
   getTransactions: (params) => api.get('/gateway/transactions', { params }),
 };
 
+// PT Sessions API
+export const ptSessionsAPI = {
+  getMemberSessions: (memberId) => api.get(`/pt-sessions/member/${memberId}`),
+  logSession: (data) => api.post('/pt-sessions', data),
+  deleteSession: (id) => api.delete(`/pt-sessions/${id}`),
+};
+
 // Payroll API
 export const payrollAPI = {
   getAll: (params) => api.get('/payroll', { params }),
