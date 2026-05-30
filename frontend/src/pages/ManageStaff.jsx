@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { staffAPI, branchesAPI } from '../services/api';
 import {
   Users, Plus, Edit2, Trash2, Key, X, Eye, EyeOff,
-  CheckCircle, XCircle, Search, Building2
+  CheckCircle, Search, Building2
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 

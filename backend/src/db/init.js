@@ -336,14 +336,16 @@ const initDB = async () => {
     `);
 
     const bcrypt = require('bcryptjs');
-    const passwordHash = await bcrypt.hash('admin123', 12);
+    const ownerPassword = process.env.DEFAULT_OWNER_PASSWORD || 'admin123';
+    const passwordHash = await bcrypt.hash(ownerPassword, 12);
     await pool.query(`
       INSERT INTO users (email, password_hash, full_name, phone, role)
       VALUES ('owner@ironmanfitness.com', $1, 'Super Admin', '9876500000', 'owner')
       ON CONFLICT (email) DO NOTHING
     `, [passwordHash]);
 
-    console.log('✅ Default data inserted. owner@ironmanfitness.com / admin123');
+    const masked = ownerPassword.slice(0, 2) + '*'.repeat(Math.max(ownerPassword.length - 2, 3));
+    console.log(`✅ Default data inserted. owner@ironmanfitness.com / ${masked}`);
     await pool.end();
     console.log('✅ IRONMAN FITNESS Database initialization complete!');
 

@@ -119,12 +119,14 @@ router.get('/expiring/list', authMiddleware, async (req, res) => {
   try {
     const days = parseInt(req.query.days) || 7;
     const result = await db.query(
-      `SELECT id, name, phone, plan_end_date, plan_name, branch_id
-       FROM members
-       WHERE is_active = true
-         AND status = 'active'
-         AND plan_end_date BETWEEN CURRENT_DATE AND CURRENT_DATE + ($1 || ' days')::INTERVAL
-       ORDER BY plan_end_date ASC
+      `SELECT m.id, m.name, m.phone, m.plan_end_date, m.branch_id,
+              p.name AS plan_name
+       FROM members m
+       LEFT JOIN plans p ON m.plan_id = p.id
+       WHERE m.is_active = true
+         AND m.status = 'active'
+         AND m.plan_end_date BETWEEN CURRENT_DATE AND CURRENT_DATE + ($1 || ' days')::INTERVAL
+       ORDER BY m.plan_end_date ASC
        LIMIT 100`,
       [days]
     );

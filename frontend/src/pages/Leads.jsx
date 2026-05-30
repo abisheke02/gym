@@ -1,25 +1,20 @@
 import { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { leadsAPI, branchesAPI, plansAPI } from '../services/api';
-import { 
-  Search, 
-  Plus, 
-  Filter, 
-  MoreVertical,
+import { leadsAPI, branchesAPI } from '../services/api';
+import {
+  Search,
+  Plus,
   Phone,
   Mail,
-  MapPin,
-  Clock,
   AlertTriangle,
   ChevronRight,
-  Send,
   Upload
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import BulkUploadModal from './BulkUploadModal';
 
 const Leads = () => {
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const [leads, setLeads] = useState([]);
   const [branches, setBranches] = useState([]);
   const [loading, setLoading] = useState(true);
