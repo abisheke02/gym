@@ -250,5 +250,29 @@ router.get('/dashboard/kpis', authMiddleware, rbacMiddleware('owner', 'manager')
   }
 });
 
+// GET /api/pending-dues — members whose total paid < plan price
+router.get('/pending-dues', authMiddleware, async (req, res) => {
+  try {
+    const branchFilter = req.user.branch_id ? `AND m.branch_id = '${req.user.branch_id}'` : '';
+    const result = await db.query(`
+      SELECT m.id, m.name, m.phone, m.membership_id, m.plan_end_date,
+             p.name AS plan_name, p.price AS plan_price,
+             COALESCE(SUM(pay.amount), 0)::numeric AS total_paid,
+             (p.price - COALESCE(SUM(pay.amount), 0))::numeric AS pending_amount
+      FROM members m
+      JOIN plans p ON p.id = m.plan_id
+      LEFT JOIN payments pay ON pay.member_id = m.id
+      WHERE m.is_active = true AND m.status = 'active' ${branchFilter}
+      GROUP BY m.id, p.name, p.price
+      HAVING p.price > COALESCE(SUM(pay.amount), 0)
+      ORDER BY pending_amount DESC
+    `);
+    res.json({ dues: result.rows, total: result.rows.reduce((s, r) => s + parseFloat(r.pending_amount), 0) });
+  } catch (err) {
+    console.error('Pending dues error:', err);
+    res.status(500).json({ error: 'Failed to fetch pending dues' });
+  }
+});
+
 module.exports = router;
 

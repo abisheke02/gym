@@ -126,6 +126,7 @@ export const financeAPI = {
   getReceptionistSummary: (branchId) => api.get('/dashboard/receptionist-summary', { params: { branch_id: branchId } }),
   getKPIs: (branchId) => api.get('/dashboard/kpis', { params: { branch_id: branchId } }),
   getWeeklyLeads: (branchId) => api.get('/dashboard/weekly-leads', { params: { branch_id: branchId } }),
+  getPendingDues: () => api.get('/pending-dues'),
 };
 
 // Subscription API (gym's SaaS subscription)
@@ -142,6 +143,14 @@ export const gatewayAPI = {
   createOrder: (data) => api.post('/gateway/create-order', data),
   verify: (data) => api.post('/gateway/verify', data),
   getTransactions: (params) => api.get('/gateway/transactions', { params }),
+};
+
+// Payroll API
+export const payrollAPI = {
+  getAll: (params) => api.get('/payroll', { params }),
+  getStaffList: () => api.get('/payroll/staff-list'),
+  record: (data) => api.post('/payroll', data),
+  delete: (id) => api.delete(`/payroll/${id}`),
 };
 
 // Staff Management API (owner only)

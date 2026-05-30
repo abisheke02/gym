@@ -249,22 +249,6 @@ const Members = () => {
              />
            </div>
            <div className="flex gap-2">
-              {user?.role === 'owner' ? (
-                <select 
-                  value={filter.branch_id || ''}
-                  onChange={(e) => setFilter(prev => ({ ...prev, branch_id: e.target.value }))}
-                  className="px-4 py-4 bg-gray-50 dark:bg-gray-900/50 rounded-2xl text-xs font-black uppercase outline-none border-2 border-transparent focus:border-[#005c5b] dark:text-gray-300"
-                >
-                  <option value="">All Branches</option>
-                  {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-                </select>
-              ) : (
-                <div className="px-6 py-4 bg-[#005c5b]/5 dark:bg-[#005c5b]/20 rounded-2xl flex items-center border border-[#005c5b]/20">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-[#005c5b] dark:text-[#01a2a1]">
-                    {user?.branch_name || 'My Branch'}
-                  </span>
-                </div>
-              )}
               <button className="p-4 bg-gray-50 dark:bg-gray-900/50 rounded-2xl text-gray-400 hover:text-[#005c5b] transition-all"><Filter className="w-5 h-5" /></button>
            </div>
         </div>

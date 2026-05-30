@@ -29,7 +29,7 @@ import {
   Area
 } from 'recharts';
 import { useNavigate } from 'react-router-dom';
-import { financeAPI, branchesAPI } from '../services/api';
+import { financeAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
 
@@ -38,55 +38,29 @@ const Reports = () => {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('trends');
   const [trendTab, setTrendTab] = useState('Week');
-  const [branches, setBranches] = useState([]);
-  const [selectedBranch, setSelectedBranch] = useState(user?.role === 'owner' ? '' : (user?.branch_id || ''));
   const [loading, setLoading] = useState(true);
-  
   const [trendData, setTrendData] = useState([]);
   const [summaryData, setSummaryData] = useState([]);
-  const [dateFilter, setDateFilter] = useState({
-    start: '',
-    end: ''
-  });
+  const [dateFilter, setDateFilter] = useState({ start: '', end: '' });
 
-  useEffect(() => {
-    fetchBranches();
-  }, []);
-
-  useEffect(() => {
-    fetchReportData();
-  }, [activeTab, selectedBranch, trendTab]);
-
-  const fetchBranches = async () => {
-    try {
-      const response = await branchesAPI.getAll();
-      setBranches(response.data.branches);
-    } catch (error) {
-    }
-  };
+  useEffect(() => { fetchReportData(); }, [activeTab, trendTab]);
 
   const fetchReportData = async () => {
     setLoading(true);
     try {
+      const response = await financeAPI.getDashboardSummary(user?.branch_id);
+      const data = response.data;
       if (activeTab === 'trends') {
-        const response = await financeAPI.getDashboardSummary(selectedBranch);
-        const dailyData = response.data.weeklyChartData || [];
-        setTrendData(dailyData);
+        setTrendData(data.weeklyChartData || []);
       } else {
-        // For collections, we use the branch P&L or similar
-        // Since we don't have a perfect "Plan Status Summary" endpoint, we aggregate from dashboard summary or similar
-        // For now, let's use the dashboard summary for the totals
-        const response = await financeAPI.getDashboardSummary(selectedBranch);
-        const data = response.data;
-        
         setSummaryData([
-          { title: 'Total Revenue', count: data.activeMembers, amount: data.todayRevenue * 30, received: data.todayRevenue * 25, balance: data.todayRevenue * 5, color: 'text-blue-600', icon: PieChart },
-          { title: 'New Leads', count: data.todayLeads, amount: 0, received: 0, balance: 0, color: 'text-green-600', icon: Activity },
-          { title: 'Follow-ups', count: data.followUpsDue, amount: 0, received: 0, balance: 0, color: 'text-orange-500', icon: TrendingUp },
-          { title: 'SLA Breached', count: data.slaBreached, amount: 0, received: 0, balance: 0, color: 'text-red-500', icon: DollarSign }
+          { title: 'Active Members', count: data.activeMembers,  amount: data.monthRevenue || 0,   received: data.weekRevenue || 0, balance: 0, color: 'text-blue-600',   icon: PieChart },
+          { title: 'New Leads',     count: data.todayLeads,      amount: 0,                         received: 0,                    balance: 0, color: 'text-green-600',  icon: Activity },
+          { title: 'Follow-ups',    count: data.followUpsDue,    amount: 0,                         received: 0,                    balance: 0, color: 'text-orange-500', icon: TrendingUp },
+          { title: 'SLA Breached',  count: data.slaBreached,     amount: 0,                         received: 0,                    balance: 0, color: 'text-red-500',    icon: DollarSign },
         ]);
       }
-    } catch (error) {
+    } catch {
       toast.error('Failed to fetch report data');
     } finally {
       setLoading(false);
@@ -99,24 +73,10 @@ const Reports = () => {
       <div className="bg-[#005c5b] text-white -mx-4 -mt-4 p-4 sticky top-0 z-20 shadow-lg">
         <div className="flex items-center justify-between mb-4">
            <h1 className="text-xl font-black uppercase tracking-tight ml-1">Reports Center</h1>
-           {user?.role === 'owner' ? (
-             <div className="flex items-center gap-2 bg-white/10 px-3 py-1.5 rounded-xl border border-white/20">
-                <MapPin className="w-3.5 h-3.5" />
-                <select 
-                  value={selectedBranch}
-                  onChange={(e) => setSelectedBranch(e.target.value)}
-                  className="bg-transparent text-[10px] font-black uppercase tracking-widest outline-none border-none cursor-pointer"
-                >
-                  <option value="" className="text-black">All Branches</option>
-                  {branches.map(b => <option key={b.id} value={b.id} className="text-black">{b.name}</option>)}
-                </select>
-             </div>
-           ) : (
-             <div className="flex items-center gap-2 bg-white/10 px-3 py-1.5 rounded-xl border border-white/20">
-                <MapPin className="w-3.5 h-3.5" />
-                <span className="text-[10px] font-black uppercase tracking-widest">{user?.branch_name || 'My Branch'}</span>
-             </div>
-           )}
+           <div className="flex items-center gap-2 bg-white/10 px-3 py-1.5 rounded-xl border border-white/20">
+              <MapPin className="w-3.5 h-3.5" />
+              <span className="text-[10px] font-black uppercase tracking-widest">My Gym</span>
+           </div>
         </div>
 
         {/* Tab Selection */}

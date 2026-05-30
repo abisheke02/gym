@@ -251,6 +251,31 @@ const initDB = async () => {
         updated_at TIMESTAMP DEFAULT NOW()
       );
 
+      -- Payroll (staff salary payments)
+      CREATE TABLE IF NOT EXISTS payroll (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+        amount DECIMAL(10,2) NOT NULL,
+        salary_month VARCHAR(7) NOT NULL,
+        payment_date DATE NOT NULL DEFAULT CURRENT_DATE,
+        payment_mode VARCHAR(20) DEFAULT 'cash' CHECK (payment_mode IN ('cash','upi','card','bank_transfer')),
+        notes TEXT,
+        recorded_by UUID REFERENCES users(id),
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+
+      -- PT Sessions (personal training session log)
+      CREATE TABLE IF NOT EXISTS pt_sessions (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        member_id UUID REFERENCES members(id) ON DELETE CASCADE,
+        trainer_id UUID REFERENCES trainers(id) ON DELETE SET NULL,
+        session_date DATE NOT NULL DEFAULT CURRENT_DATE,
+        duration_minutes INTEGER DEFAULT 60,
+        notes TEXT,
+        recorded_by UUID REFERENCES users(id),
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+
       -- Password Reset Tokens
       CREATE TABLE IF NOT EXISTS password_reset_tokens (
         id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),

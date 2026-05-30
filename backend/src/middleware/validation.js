@@ -165,14 +165,14 @@ const paymentSchemas = {
     transaction_id: Joi.string().max(100),
     discount_amount: Joi.number().min(0).default(0),
     notes: Joi.string().max(500),
-    branch_id: Joi.string().uuid().required(),
+    branch_id: Joi.string().uuid().optional(),
   }),
 };
 
 // Expense schemas
 const expenseSchemas = {
   create: Joi.object({
-    branch_id: Joi.string().uuid().required(),
+    branch_id: Joi.string().uuid().optional(),
     category: Joi.string().valid('salary', 'rent', 'utilities', 'ads', 'maintenance', 'supplies', 'other').required(),
     amount: Joi.number().min(1).required(),
     description: Joi.string().max(500),

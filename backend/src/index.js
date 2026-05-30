@@ -18,6 +18,7 @@ const subscriptionRoutes = require('./routes/subscriptions');
 const gatewayRoutes = require('./routes/gateway');
 const attendanceRoutes = require('./routes/attendance');
 const messagingRoutes = require('./routes/messaging');
+const payrollRoutes = require('./routes/payroll');
 
 const app = express();
 
@@ -73,6 +74,7 @@ app.use('/api/subscriptions', subscriptionRoutes);
 app.use('/api/gateway', gatewayRoutes);
 app.use('/api/attendance', attendanceRoutes);
 app.use('/api/messaging', messagingRoutes);
+app.use('/api/payroll', payrollRoutes);
 
 // 404 handler
 app.use((req, res) => {

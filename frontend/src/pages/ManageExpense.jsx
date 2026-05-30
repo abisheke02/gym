@@ -179,16 +179,6 @@ const ManageExpense = () => {
               <option key={cat.value} value={cat.value}>{cat.label}</option>
             ))}
           </select>
-          <select
-            value={filter.branch_id}
-            onChange={(e) => setFilter({ ...filter, branch_id: e.target.value })}
-            className="input-field md:w-48"
-          >
-            <option value="">All Branches</option>
-            {branches.map(branch => (
-              <option key={branch.id} value={branch.id}>{branch.name}</option>
-            ))}
-          </select>
           <div className="text-right">
             <span className="text-gray-400 text-sm">Total: </span>
             <span className="text-white text-lg font-bold">₹{total.toLocaleString()}</span>

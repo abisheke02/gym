@@ -14,7 +14,6 @@ import {
   Smartphone,
   PieChart,
   FileText,
-  GitBranch,
   Lock,
   Info,
   Calendar,
@@ -76,7 +75,7 @@ const Layout = () => {
       title: 'Management',
       items: [
         { path: '/manage-staff', icon: UserCog, label: 'Manage Staff', roles: ['owner'] },
-        { path: '/branches', icon: GitBranch, label: 'Branches', roles: ['owner', 'manager'] },
+        { path: '/payroll',      icon: BadgeCheck, label: 'Payroll', roles: ['owner', 'manager', 'accountant'] },
         { path: '/trainers', icon: Users, label: 'Trainers', roles: ['owner', 'manager'] },
         { path: '/manage-enquiry', icon: Info, label: 'Enquiry' },
         { path: '/manage-expense', icon: CreditCard, label: 'Expenses', roles: ['owner', 'manager', 'accountant'] },
