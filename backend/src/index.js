@@ -26,7 +26,15 @@ const app = express();
 // Security middleware
 app.use(helmet());
 app.use(cors({
-  origin: [config.frontendUrl, 'http://localhost:3000', 'http://localhost:3001', 'http://localhost:5173'],
+  origin: [
+    config.frontendUrl,
+    'http://localhost:3000',
+    'http://localhost:3001',
+    'http://localhost:4000',
+    'http://localhost:5173',
+    /^http:\/\/192\.168\.\d+\.\d+(:\d+)?$/,
+    /^http:\/\/172\.\d+\.\d+\.\d+(:\d+)?$/,
+  ],
   credentials: true
 }));
 
