@@ -230,8 +230,8 @@ const Layout = () => {
         )}
 
         {/* Page content */}
-        <main className="flex-1 p-3 lg:p-5 overflow-y-auto">
-          <div className="pb-20 lg:pb-5">
+        <main className="flex-1 p-4 lg:p-6 overflow-y-auto h-full">
+          <div className="h-full pb-20 lg:pb-6">
             <Outlet />
           </div>
         </main>
