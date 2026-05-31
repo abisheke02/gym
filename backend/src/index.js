@@ -47,7 +47,7 @@ const limiter = rateLimit({
 
 const authLimiter = rateLimit({
   windowMs: 1 * 60 * 1000,
-  max: 10, // 10 requests per minute for auth
+  max: config.nodeEnv === 'production' ? 10 : 100,
   message: { error: 'Too many auth attempts, please try again later' }
 });
 
