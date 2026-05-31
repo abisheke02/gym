@@ -3,26 +3,25 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { membersAPI, branchesAPI, plansAPI, trainersAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import {
-  Search,
-  Plus,
-  Filter,
-  Edit2,
-  Users,
-  Calendar,
-  AlertTriangle,
-  ChevronRight,
-  CheckCircle,
-  X,
-  Zap,
-  Trash2,
-  Phone,
-  DollarSign
+  Search, Plus, Edit2, Users, Calendar,
+  AlertTriangle, ChevronRight, CheckCircle,
+  X, Zap, Trash2, Phone, DollarSign,
+  LayoutGrid, List, UserCheck
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+
+const STATUS_CONFIG = {
+  active:    { label: 'Active',    color: '#10b981', bg: '#ecfdf5', border: '#a7f3d0', text: 'text-emerald-600' },
+  expired:   { label: 'Expired',   color: '#ef4444', bg: '#fef2f2', border: '#fecaca', text: 'text-red-500'     },
+  frozen:    { label: 'Frozen',    color: '#3b82f6', bg: '#eff6ff', border: '#bfdbfe', text: 'text-blue-500'    },
+  cancelled: { label: 'Cancelled', color: '#9ca3af', bg: '#f9fafb', border: '#e5e7eb', text: 'text-gray-400'    },
+};
 
 const Members = () => {
   const { user } = useAuth();
   const [searchParams] = useSearchParams();
+  const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'table'
+  const [activeFilter, setActiveFilter] = useState('all');
   const [members, setMembers] = useState([]);
   const [branches, setBranches] = useState([]);
   const [plans, setPlans] = useState([]);
@@ -37,14 +36,10 @@ const Members = () => {
     ? (searchParams.get('branch_id') || '')
     : (user?.branch_id || '');
 
-  const [filter, setFilter] = useState({
-    status: searchParams.get('status') || '',
+  const filter = {
     branch_id: effectiveBranchId,
-    plan_id: searchParams.get('plan_id') || '',
-    birthday: '',
-    expiry: '',
-    sort: 'newest'
-  });
+    expiry: searchParams.get('expiry') || '',
+  };
 
   useEffect(() => {
     fetchMembers();
@@ -147,222 +142,390 @@ const Members = () => {
     });
   };
 
-  const statusColors = {
-    active: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20 shadow-sm shadow-emerald-500/10',
-    expired: 'bg-rose-500/10 text-rose-500 border-rose-500/20 shadow-sm shadow-rose-500/10',
-    frozen: 'bg-blue-500/10 text-blue-500 border-blue-500/20',
-    cancelled: 'bg-gray-500/10 text-gray-500 border-gray-500/20'
-  };
 
   const filteredMembers = members.filter(member => {
-    const matchesSearch = member.name.toLowerCase().includes(search.toLowerCase()) ||
-      member.phone.includes(search);
-
+    const matchesSearch =
+      member.name.toLowerCase().includes(search.toLowerCase()) ||
+      member.phone.includes(search) ||
+      (member.membership_id || '').toLowerCase().includes(search.toLowerCase());
     if (!matchesSearch) return false;
-    
+    if (activeFilter !== 'all' && member.status !== activeFilter) return false;
     if (filter.branch_id && member.branch_id !== filter.branch_id) return false;
-
-    if (filter.birthday) {
-      if (!member.dob) return false;
-      const dob = new Date(member.dob);
-      const today = new Date();
-      if (filter.birthday === 'today') return dob.getDate() === today.getDate() && dob.getMonth() === today.getMonth();
-      if (filter.birthday === 'month') return dob.getMonth() === today.getMonth();
-    }
-
     if (filter.expiry) {
       if (!member.plan_end_date) return false;
-      const daysLeft = Math.ceil((new Date(member.plan_end_date) - new Date()) / (1000 * 60 * 60 * 24));
-      if (filter.expiry === 'today' && daysLeft !== 0) return false;
-      if (filter.expiry === 'week' && (daysLeft < 0 || daysLeft > 7)) return false;
+      const d = Math.ceil((new Date(member.plan_end_date) - new Date()) / 864e5);
+      if (filter.expiry === 'week' && (d < 0 || d > 7)) return false;
     }
-
     return true;
-  }).sort((a, b) => {
-    if (filter.sort === 'newest') return new Date(b.created_at || 0) - new Date(a.created_at || 0);
-    if (filter.sort === 'oldest') return new Date(a.created_at || 0) - new Date(b.created_at || 0);
-    return 0;
-  });
+  }).sort((a, b) =>
+    new Date(b.created_at || 0) - new Date(a.created_at || 0)
+  );
+
+  const handleCheckIn = async (member) => {
+    try {
+      await membersAPI.checkIn(member.id);
+      toast.success(`${member.name} checked in!`);
+      fetchMembers();
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Check-in failed');
+    }
+  };
+
+  const counts = {
+    all:       members.length,
+    active:    members.filter(m => m.status === 'active').length,
+    expired:   members.filter(m => m.status === 'expired').length,
+    frozen:    members.filter(m => m.status === 'frozen').length,
+  };
+
+  const FILTER_TABS = [
+    { key: 'all',     label: 'All Members',  count: counts.all,     color: 'text-gray-600'    },
+    { key: 'active',  label: 'Active',        count: counts.active,  color: 'text-emerald-600' },
+    { key: 'expired', label: 'Expired',       count: counts.expired, color: 'text-red-500'     },
+    { key: 'frozen',  label: 'Frozen',        count: counts.frozen,  color: 'text-blue-500'    },
+  ];
 
   return (
-    <div className="space-y-8 animate-fadeIn pb-24 dark:bg-[#0a0a0a] max-w-7xl mx-auto">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+    <div className="flex flex-col gap-5 animate-fadeIn pb-24">
+
+      {/* ── Header ── */}
+      <div className="flex items-center justify-between">
         <div>
-           <h1 className="text-3xl font-black text-gray-900 dark:text-white uppercase tracking-tight leading-none mb-2">Member Directory</h1>
-           <p className="text-sm font-bold text-gray-400 dark:text-gray-500">Managing {members.length} active and expired memberships.</p>
+          <h1 className="text-2xl font-black text-gray-900 dark:text-white uppercase tracking-tight leading-none">
+            Member Directory
+          </h1>
+          <p className="text-xs font-bold text-gray-400 mt-1">
+            {counts.active} active · {counts.expired} expired · {members.length} total
+          </p>
         </div>
-        <div className="flex gap-4">
-           <button
-             onClick={() => setShowModal(true)}
-             className="btn-primary flex items-center gap-3 px-8 shadow-xl shadow-[#005c5b]/30"
-           >
-             <Plus className="w-5 h-5" />
-             <span className="uppercase tracking-widest text-[11px]">Admission</span>
-           </button>
-        </div>
+        <button
+          onClick={() => setShowModal(true)}
+          className="flex items-center gap-2 px-5 py-2.5 bg-[#005c5b] hover:bg-[#004746] text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-lg shadow-[#005c5b]/20 transition-all"
+        >
+          <Plus className="w-4 h-4" /> New Admission
+        </button>
       </div>
 
-      {/* Quick Filters */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="gym-card bg-emerald-500/5 dark:bg-emerald-500/10 border-emerald-500/20 p-4 rounded-3xl group cursor-pointer hover:bg-emerald-500/10 transition-all">
-           <div className="flex items-center gap-4 mb-2">
-              <div className="p-2 bg-emerald-500 text-white rounded-xl shadow-lg shadow-emerald-500/20"><CheckCircle className="w-5 h-5" /></div>
-              <span className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.2em] leading-none">Active</span>
-           </div>
-           <p className="text-3xl font-black text-gray-900 dark:text-white">{members.filter(m => m.status === 'active').length}</p>
-        </div>
-        <div className="gym-card bg-rose-500/5 dark:bg-rose-500/10 border-rose-500/20 p-4 rounded-3xl group cursor-pointer hover:bg-rose-500/10 transition-all">
-           <div className="flex items-center gap-4 mb-2">
-              <div className="p-2 bg-rose-500 text-white rounded-xl shadow-lg shadow-rose-500/20"><AlertTriangle className="w-5 h-5" /></div>
-              <span className="text-[10px] font-black text-rose-500 uppercase tracking-[0.2em] leading-none">Expired</span>
-           </div>
-           <p className="text-3xl font-black text-gray-900 dark:text-white">{members.filter(m => m.status === 'expired').length}</p>
-        </div>
-        <div className="gym-card bg-blue-500/5 dark:bg-blue-500/10 border-blue-500/20 p-4 rounded-3xl group cursor-pointer">
-           <div className="flex items-center gap-4 mb-2">
-              <div className="p-2 bg-blue-500 text-white rounded-xl shadow-lg shadow-blue-500/20"><Users className="w-5 h-5" /></div>
-              <span className="text-[10px] font-black text-blue-500 uppercase tracking-[0.2em] leading-none">Total Base</span>
-           </div>
-           <p className="text-3xl font-black text-gray-900 dark:text-white">{members.length}</p>
-        </div>
-        <div className="gym-card bg-amber-500/5 dark:bg-amber-500/10 border-amber-500/20 p-4 rounded-3xl group cursor-pointer">
-           <div className="flex items-center gap-4 mb-2">
-              <div className="p-2 bg-amber-500 text-white rounded-xl shadow-lg shadow-amber-500/20"><Zap className="w-5 h-5" /></div>
-              <span className="text-[10px] font-black text-amber-500 uppercase tracking-[0.2em] leading-none">Growth</span>
-           </div>
-           <p className="text-3xl font-black text-gray-900 dark:text-white">+12%</p>
-        </div>
-      </div>
-
-      {/* Main Search & Tool Bar */}
-      <div className="bg-white dark:bg-gray-800 rounded-3xl p-4 shadow-xl border-none space-y-4">
-        <div className="flex flex-col md:flex-row gap-4">
-           <div className="flex-1 relative group">
-             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-[#005c5b] transition-colors" />
-             <input
-               type="text"
-               placeholder="Search by Name, Mobile or Member ID..."
-               value={search}
-               onChange={(e) => setSearch(e.target.value)}
-               className="w-full pl-12 pr-4 py-4 bg-gray-50 dark:bg-gray-900/50 rounded-2xl text-sm font-bold placeholder:text-gray-300 outline-none border-2 border-transparent focus:border-[#005c5b] dark:focus:border-[#01a2a1] transition-all dark:text-white"
-             />
-           </div>
-           <div className="flex gap-2">
-              <button className="p-4 bg-gray-50 dark:bg-gray-900/50 rounded-2xl text-gray-400 hover:text-[#005c5b] transition-all"><Filter className="w-5 h-5" /></button>
-           </div>
-        </div>
-      </div>
-
-      {/* Member List - Mobile Cards */}
-      <div className="space-y-4">
-        {loading ? (
-          <div className="flex items-center justify-center h-64">
-             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#005c5b]"></div>
+      {/* ── Quick stats row ── */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {[
+          { label: 'Active',  value: counts.active,  color: '#10b981', bg: '#ecfdf5', border: '#a7f3d0', icon: CheckCircle },
+          { label: 'Expired', value: counts.expired, color: '#ef4444', bg: '#fef2f2', border: '#fecaca', icon: AlertTriangle },
+          { label: 'Total',   value: counts.all,     color: '#005c5b', bg: '#f0fdf9', border: '#99f6e4', icon: Users },
+          { label: 'Frozen',  value: counts.frozen,  color: '#3b82f6', bg: '#eff6ff', border: '#bfdbfe', icon: Zap },
+        ].map(s => (
+          <div key={s.label}
+            className="bg-white dark:bg-gray-800 rounded-2xl p-4 border flex items-center gap-3"
+            style={{ borderColor: s.border, borderTopWidth: 3, borderTopColor: s.color }}>
+            <div className="p-2.5 rounded-xl" style={{ background: s.bg }}>
+              <s.icon className="w-5 h-5" style={{ color: s.color }} />
+            </div>
+            <div>
+              <p className="text-2xl font-black" style={{ color: s.color }}>{s.value}</p>
+              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{s.label}</p>
+            </div>
           </div>
-        ) : filteredMembers.length === 0 ? (
-          <div className="text-center py-20 bg-white dark:bg-gray-800 rounded-3xl shadow-xl">
-             <p className="text-xl font-black text-gray-900 dark:text-white uppercase mb-2">No Members Found</p>
-             <p className="text-sm font-bold text-gray-400">Try adjusting your search or filters.</p>
-          </div>
-        ) : (
-          <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-xl border border-gray-100 dark:border-gray-700 overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs whitespace-nowrap">
-                <thead className="bg-gray-50/50 dark:bg-gray-900/50 text-gray-400 dark:text-gray-500 text-[9px] font-black uppercase tracking-widest border-b border-gray-100 dark:border-gray-700">
-                  <tr>
-                    <th className="px-4 py-2.5">Member Name</th>
-                    <th className="px-4 py-2.5">Admission ID</th>
-                    <th className="px-4 py-2.5">Contact</th>
-                    <th className="px-4 py-2.5">Plan & Amount</th>
-                    <th className="px-4 py-2.5">Validity</th>
-                    <th className="px-4 py-2.5">Status</th>
-                    <th className="px-4 py-2.5 text-center">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                  {filteredMembers.map(member => (
-                    <tr key={member.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors group">
-                      <td className="px-4 py-2.5">
+        ))}
+      </div>
+
+      {/* ── Search + View Toggle ── */}
+      <div className="flex items-center gap-3">
+        <div className="flex-1 relative">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Search by name, phone or member ID..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full pl-11 pr-4 py-3 bg-white dark:bg-gray-800 rounded-xl text-sm font-bold placeholder:text-gray-300 outline-none border-2 border-gray-200 dark:border-gray-700 focus:border-[#005c5b] transition-all dark:text-white"
+          />
+        </div>
+        {/* View toggle */}
+        <div className="flex bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
+          <button
+            onClick={() => setViewMode('grid')}
+            className={`p-3 transition-all ${viewMode === 'grid' ? 'bg-[#005c5b] text-white' : 'text-gray-400 hover:text-[#005c5b]'}`}
+          >
+            <LayoutGrid className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => setViewMode('table')}
+            className={`p-3 transition-all ${viewMode === 'table' ? 'bg-[#005c5b] text-white' : 'text-gray-400 hover:text-[#005c5b]'}`}
+          >
+            <List className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+
+      {/* ── Filter Tabs ── */}
+      <div className="flex gap-2 overflow-x-auto pb-1">
+        {FILTER_TABS.map(tab => (
+          <button
+            key={tab.key}
+            onClick={() => setActiveFilter(tab.key)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest whitespace-nowrap transition-all border ${
+              activeFilter === tab.key
+                ? 'bg-[#005c5b] text-white border-[#005c5b] shadow-md'
+                : 'bg-white dark:bg-gray-800 text-gray-500 border-gray-200 dark:border-gray-700 hover:border-[#005c5b]'
+            }`}
+          >
+            {tab.label}
+            <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-black ${
+              activeFilter === tab.key ? 'bg-white/20 text-white' : 'bg-gray-100 dark:bg-gray-700 ' + tab.color
+            }`}>
+              {tab.count}
+            </span>
+          </button>
+        ))}
+      </div>
+
+      {/* ── Member List ── */}
+      {loading ? (
+        <div className="flex items-center justify-center h-48">
+          <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-[#005c5b]" />
+        </div>
+      ) : filteredMembers.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-20 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700">
+          <Users className="w-12 h-12 text-gray-200 dark:text-gray-600 mb-3" />
+          <p className="text-sm font-black text-gray-400 uppercase tracking-widest">No Members Found</p>
+          <p className="text-xs text-gray-300 mt-1">Try a different search or filter</p>
+        </div>
+      ) : viewMode === 'grid' ? (
+
+        /* ── CARD GRID (EasyMembr style) ── */
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {filteredMembers.map(member => {
+            const st = STATUS_CONFIG[member.status] || STATUS_CONFIG.active;
+            const daysLeft = member.plan_end_date
+              ? Math.ceil((new Date(member.plan_end_date) - new Date()) / 864e5)
+              : null;
+            const planPct = (member.duration_months && daysLeft !== null)
+              ? Math.max(0, Math.min(100, Math.round((daysLeft / (member.duration_months * 30)) * 100)))
+              : 0;
+            const isCheckedInToday = member.last_check_in &&
+              new Date(member.last_check_in).toDateString() === new Date().toDateString();
+
+            return (
+              <div
+                key={member.id}
+                className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden hover:shadow-lg hover:-translate-y-0.5 transition-all"
+                style={{ borderTop: `3px solid ${st.color}` }}
+              >
+                {/* Card Header */}
+                <div className="p-4 pb-3">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      {/* Avatar */}
+                      <div
+                        className="w-12 h-12 rounded-2xl flex items-center justify-center text-white font-black text-lg shrink-0 shadow-md"
+                        style={{ background: `linear-gradient(135deg, ${st.color}, ${st.color}99)` }}
+                      >
+                        {member.name.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-black text-sm text-gray-900 dark:text-white truncate leading-tight">
+                          {member.name}
+                        </p>
+                        <p className="text-[10px] font-bold text-gray-400 mt-0.5">
+                          {member.membership_id ? `#${member.membership_id}` : 'No ID'}
+                        </p>
+                      </div>
+                    </div>
+                    {/* Status badge */}
+                    <span
+                      className="text-[9px] font-black uppercase px-2 py-1 rounded-lg shrink-0"
+                      style={{ background: st.bg, color: st.color, border: `1px solid ${st.border}` }}
+                    >
+                      {st.label}
+                    </span>
+                  </div>
+
+                  {/* Info row */}
+                  <div className="flex items-center gap-3 text-[11px] text-gray-500 dark:text-gray-400 mb-3">
+                    <span className="flex items-center gap-1">
+                      <Phone className="w-3 h-3" /> {member.phone}
+                    </span>
+                    {member.gender && (
+                      <span className="capitalize font-bold">{member.gender.charAt(0).toUpperCase()}</span>
+                    )}
+                    {isCheckedInToday && (
+                      <span className="flex items-center gap-1 text-emerald-500 font-black ml-auto">
+                        <UserCheck className="w-3 h-3" /> In
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Plan section */}
+                  <div className="bg-gray-50 dark:bg-gray-900/40 rounded-xl p-3 border border-gray-100 dark:border-gray-700">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-[11px] font-black text-gray-700 dark:text-gray-300 truncate">
+                        {member.plan_name || 'No Plan'}
+                      </span>
+                      <span className="text-[11px] font-black" style={{ color: '#005c5b' }}>
+                        ₹{(member.plan_price || 0).toLocaleString()}
+                      </span>
+                    </div>
+                    {/* Days left bar */}
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all"
+                          style={{
+                            width: `${planPct}%`,
+                            background: daysLeft !== null && daysLeft <= 7 ? '#ef4444'
+                              : daysLeft !== null && daysLeft <= 30 ? '#f59e0b' : st.color
+                          }}
+                        />
+                      </div>
+                      <span className={`text-[10px] font-black shrink-0 ${
+                        daysLeft === null ? 'text-gray-400'
+                          : daysLeft <= 0 ? 'text-red-500'
+                          : daysLeft <= 7 ? 'text-amber-500'
+                          : 'text-gray-500'
+                      }`}>
+                        {daysLeft === null ? '—'
+                          : daysLeft <= 0 ? 'Expired'
+                          : `${daysLeft}d left`}
+                      </span>
+                    </div>
+                    {member.plan_end_date && (
+                      <p className="text-[9px] text-gray-400 mt-1 flex items-center gap-1">
+                        <Calendar className="w-2.5 h-2.5" />
+                        Expires {new Date(member.plan_end_date).toLocaleDateString('en-IN')}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Card Footer — Action buttons */}
+                <div className="px-4 pb-4 flex items-center gap-2">
+                  {/* Check-in */}
+                  <button
+                    onClick={() => handleCheckIn(member)}
+                    disabled={isCheckedInToday}
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all"
+                    style={{
+                      background: isCheckedInToday ? '#d1fae5' : '#005c5b',
+                      color: isCheckedInToday ? '#059669' : 'white',
+                      cursor: isCheckedInToday ? 'default' : 'pointer',
+                    }}
+                  >
+                    {isCheckedInToday
+                      ? <><CheckCircle className="w-3.5 h-3.5" /> Checked In</>
+                      : <><UserCheck className="w-3.5 h-3.5" /> Check In</>
+                    }
+                  </button>
+                  {/* Edit */}
+                  <button
+                    onClick={() => setEditingMember(member)}
+                    className="p-2.5 rounded-xl bg-gray-100 dark:bg-gray-700 hover:bg-amber-500 hover:text-white text-gray-500 dark:text-gray-300 transition-all"
+                    title="Edit"
+                  >
+                    <Edit2 className="w-3.5 h-3.5" />
+                  </button>
+                  {/* View */}
+                  <Link
+                    to={`/members/${member.id}`}
+                    className="p-2.5 rounded-xl bg-gray-100 dark:bg-gray-700 hover:bg-[#005c5b] hover:text-white text-gray-500 dark:text-gray-300 transition-all"
+                    title="View Details"
+                  >
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </Link>
+                  {/* Delete (owner/manager only) */}
+                  {['owner', 'manager'].includes(user?.role) && (
+                    <button
+                      onClick={() => handleDeleteMember(member)}
+                      className="p-2.5 rounded-xl bg-gray-100 dark:bg-gray-700 hover:bg-rose-500 hover:text-white text-gray-500 dark:text-gray-300 transition-all"
+                      title="Delete"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+      ) : (
+        /* ── TABLE VIEW ── */
+        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead className="bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
+                <tr className="text-[9px] font-black uppercase tracking-widest text-gray-400">
+                  <th className="px-4 py-3 text-left">Member</th>
+                  <th className="px-4 py-3 text-left">Phone</th>
+                  <th className="px-4 py-3 text-left">Plan</th>
+                  <th className="px-4 py-3 text-left">Expiry</th>
+                  <th className="px-4 py-3 text-left">Status</th>
+                  <th className="px-4 py-3 text-center">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                {filteredMembers.map(member => {
+                  const st = STATUS_CONFIG[member.status] || STATUS_CONFIG.active;
+                  const daysLeft = member.plan_end_date
+                    ? Math.ceil((new Date(member.plan_end_date) - new Date()) / 864e5)
+                    : null;
+                  return (
+                    <tr key={member.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
+                      <td className="px-4 py-3">
                         <div className="flex items-center gap-2.5">
-                          <div className="w-7 h-7 rounded-lg bg-[#005c5b]/10 dark:bg-[#005c5b]/20 flex items-center justify-center text-[#005c5b] dark:text-[#01a2a1] font-black text-sm">
+                          <div className="w-8 h-8 rounded-xl flex items-center justify-center text-white font-black text-sm"
+                            style={{ background: st.color }}>
                             {member.name.charAt(0)}
                           </div>
                           <div>
-                            <p className="font-black text-gray-900 dark:text-white uppercase tracking-tight text-xs">{member.name}</p>
+                            <p className="font-black text-gray-900 dark:text-white">{member.name}</p>
+                            <p className="text-[10px] text-gray-400">{member.membership_id ? `#${member.membership_id}` : '—'}</p>
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-2.5">
-                        <span className="font-bold text-[#005c5b] dark:text-[#01a2a1] uppercase tracking-wider">{member.membership_id || '-'}</span>
+                      <td className="px-4 py-3 text-gray-500 font-bold">{member.phone}</td>
+                      <td className="px-4 py-3">
+                        <p className="font-bold text-gray-800 dark:text-gray-200">{member.plan_name || '—'}</p>
+                        <p className="text-[10px] font-black text-[#005c5b]">₹{(member.plan_price || 0).toLocaleString()}</p>
                       </td>
-                      <td className="px-4 py-2.5">
-                        <div className="text-gray-600 dark:text-gray-400">
-                          <div className="flex items-center gap-1.5 mb-0.5">
-                            <Phone className="w-2.5 h-2.5" />
-                            <span className="font-bold text-[11px]">{member.phone}</span>
-                          </div>
-                          <span className="text-[9px] font-black uppercase tracking-widest text-gray-400">{member.branch_name || 'No Branch'}</span>
-                        </div>
+                      <td className="px-4 py-3">
+                        <p className="font-bold text-gray-600 dark:text-gray-400">
+                          {member.plan_end_date ? new Date(member.plan_end_date).toLocaleDateString('en-IN') : '—'}
+                        </p>
+                        {daysLeft !== null && (
+                          <p className={`text-[10px] font-black ${daysLeft <= 0 ? 'text-red-500' : daysLeft <= 7 ? 'text-amber-500' : 'text-gray-400'}`}>
+                            {daysLeft <= 0 ? 'Expired' : `${daysLeft}d left`}
+                          </p>
+                        )}
                       </td>
-                      <td className="px-4 py-2.5">
-                        <p className="font-bold text-gray-900 dark:text-white text-xs">{member.plan_name || 'N/A'}</p>
-                        <p className="text-[11px] font-black text-[#005c5b] dark:text-[#01a2a1]">₹{member.plan_price || 0}</p>
-                      </td>
-                      <td className="px-4 py-2.5">
-                        <div className="flex items-center gap-1.5 text-gray-500 dark:text-gray-400">
-                          <Calendar className="w-3 h-3" />
-                          <span className="text-[11px] font-bold">{new Date(member.plan_end_date).toLocaleDateString('en-IN')}</span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-2.5">
-                        <span className={`inline-flex items-center justify-center px-2.5 py-0.5 rounded-md text-[10px] font-black uppercase tracking-widest border border-current ${statusColors[member.status || 'active']}`}>
-                          {member.status || 'Active'}
+                      <td className="px-4 py-3">
+                        <span className="text-[10px] font-black uppercase px-2.5 py-1 rounded-lg"
+                          style={{ background: st.bg, color: st.color, border: `1px solid ${st.border}` }}>
+                          {st.label}
                         </span>
                       </td>
-                      <td className="px-4 py-2.5 text-center">
+                      <td className="px-4 py-3">
                         <div className="flex items-center justify-center gap-1.5">
-                          <button
-                            onClick={() => setEditingMember(member)}
-                            className="p-1.5 inline-flex bg-gray-100 hover:bg-amber-500 dark:bg-gray-700 dark:hover:bg-amber-500 text-gray-500 hover:text-white dark:text-gray-300 rounded-lg transition-all"
-                            title="Edit"
-                          >
+                          <button onClick={() => setEditingMember(member)} className="p-1.5 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-amber-500 hover:text-white text-gray-500 transition-all" title="Edit">
                             <Edit2 className="w-3.5 h-3.5" />
                           </button>
-                          <Link
-                            to={`/members/${member.id}`}
-                            className="p-1.5 inline-flex bg-gray-100 hover:bg-[#005c5b] dark:bg-gray-700 dark:hover:bg-[#01a2a1] text-gray-500 hover:text-white dark:text-gray-300 rounded-lg transition-all"
-                            title="View"
-                          >
+                          <Link to={`/members/${member.id}`} className="p-1.5 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-[#005c5b] hover:text-white text-gray-500 transition-all" title="View">
                             <ChevronRight className="w-3.5 h-3.5" />
                           </Link>
                           {['owner', 'manager'].includes(user?.role) && (
-                            <button
-                              onClick={() => handleDeleteMember(member)}
-                              className="p-1.5 inline-flex bg-gray-100 hover:bg-rose-500 dark:bg-gray-700 dark:hover:bg-rose-500 text-gray-500 hover:text-white dark:text-gray-300 rounded-lg transition-all"
-                              title="Delete"
-                            >
+                            <button onClick={() => handleDeleteMember(member)} className="p-1.5 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-rose-500 hover:text-white text-gray-500 transition-all" title="Delete">
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
                           )}
                         </div>
                       </td>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
-        )}
-      </div>
-
-      {/* FAB - Quick Add Member */}
-      <button 
-        onClick={() => setShowModal(true)}
-        className="fixed bottom-24 right-8 w-16 h-16 bg-[#005c5b] hover:bg-[#004746] text-white rounded-3xl flex items-center justify-center shadow-2xl shadow-[#005c5b]/40 transition-all hover:scale-110 active:scale-95 z-50 group lg:hidden"
-      >
-        <Plus className="w-8 h-8 group-hover:rotate-90 transition-transform duration-300" />
-      </button>
+        </div>
+      )}
 
       {/* Admission Modal */}
       {showModal && (
